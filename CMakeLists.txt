@@ -9,6 +9,10 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 option(LMPROXY_FULL_STATIC "Link the complete executable statically" ON)
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(LMPROXY_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.host.json")
+set(LMPROXY_STD_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/cpp/std/lmcode-std.schema.json")
+set(LMPROXY_MERGE_HELPER "${CMAKE_CURRENT_SOURCE_DIR}/scripts/merge-std.py")
 
 # ---- vendored Squid subset -------------------------------------------------
 # third_party/squid is git-ignored and synced by scripts/sync-squid.sh, pinned
@@ -71,6 +75,11 @@ list(TRANSFORM SQUID_SOURCES PREPEND "${SQUID_ROOT}/")
 
 # ---- embedded DSL schema ----------------------------------------------------
 set(SCHEMA_JSON "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.dsl.json")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${LMPROXY_HOST_SCHEMA}" "${LMPROXY_STD_SCHEMA}" "${LMPROXY_MERGE_HELPER}")
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${LMPROXY_MERGE_HELPER}" "${LMPROXY_HOST_SCHEMA}" "${SCHEMA_JSON}" RESULT_VARIABLE LMPROXY_MERGE_RESULT ERROR_VARIABLE LMPROXY_MERGE_ERROR)
+if(NOT LMPROXY_MERGE_RESULT EQUAL 0)
+  message(FATAL_ERROR "failed to merge lmcode std schema: ${LMPROXY_MERGE_ERROR}")
+endif()
 set(GENERATED_DIR "${CMAKE_BINARY_DIR}/generated")
 set(GENERATED_SCHEMA "${GENERATED_DIR}/schema_embedded.hpp")
 add_custom_command(

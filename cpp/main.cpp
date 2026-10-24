@@ -27,7 +27,6 @@ using dslvm::Value;
 struct Host {
   std::vector<std::unique_ptr<lmproxy::Url>> urls;
   std::vector<std::unique_ptr<lmproxy::Message>> messages;
-  dslvm::stdlib::Collections collections;
   template <class T>
   Value hold(std::vector<std::unique_ptr<T>> &arena, const char *type, T value) {
     if (arena.size() >= 65536)
@@ -122,8 +121,6 @@ std::string message_json(const lmproxy::Message &m) {
 // ---- DSL registry: the schema implementation ----
 void register_host(dslvm::Registry &reg, Host &host) {
   reg.context("proxy", "Proxy");
-  dslvm::stdlib::register_string(reg);
-  dslvm::stdlib::register_collections(reg, host.collections);
 
   reg.function("println", {"string"}, "void", [](Args &args) {
     std::cout << args[0].s << "\n";
@@ -214,8 +211,8 @@ void register_host(dslvm::Registry &reg, Host &host) {
   reg.method("Message", "header_count", {}, "int", [](void *s, Args &) {
     return Value::integer(static_cast<int64_t>(lmproxy::header_names(msg_of(s, "header_count")->headers).size()));
   });
-  reg.method("Message", "header_names", {}, "StrList", [&host](void *s, Args &) {
-    return Value::object("StrList", host.collections.make_str_list(lmproxy::header_names(msg_of(s, "header_names")->headers)));
+  reg.method("Message", "header_names", {}, "StrList", [&reg](void *s, Args &) {
+    return Value::object("StrList", reg.std_collections().make_str_list(lmproxy::header_names(msg_of(s, "header_names")->headers)));
   });
 
 
@@ -304,7 +301,6 @@ int main(int argc, char **argv) {
     }
     for (const auto &program : programs) {
       try {
-        host.collections.reset();
         program.run(context, reg);
       } catch (const dslvm::Error &error) {
         return dslvm::report_error("run", error);

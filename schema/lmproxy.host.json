@@ -1,0 +1,239 @@
+{
+  "dsl.schema": 2,
+  "name": "lmproxy",
+  "types": {
+    "Proxy": {
+      "methods": {
+        "parse_url": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Url"
+          }
+        ],
+        "parse_request": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Message"
+          }
+        ],
+        "parse_response": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "Message"
+          }
+        ],
+        "percent_decode": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "string"
+          }
+        ],
+        "percent_encode": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "string"
+          }
+        ]
+      }
+    },
+    "Url": {
+      "methods": {
+        "raw": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "scheme": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "host": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "host_is_ip": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ],
+        "userinfo": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "port": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "has_port": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ],
+        "path": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "valid": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ],
+        "error": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ]
+      }
+    },
+    "Message": {
+      "methods": {
+        "kind": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "version": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "method": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "target": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "status": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "reason": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ],
+        "header": [
+          {
+            "params": [
+              "string"
+            ],
+            "returns": "string"
+          }
+        ],
+        "header_names": [
+          {
+            "params": [],
+            "returns": "StrList"
+          }
+        ],
+        "header_count": [
+          {
+            "params": [],
+            "returns": "int"
+          }
+        ],
+        "complete": [
+          {
+            "params": [],
+            "returns": "bool"
+          }
+        ],
+        "error": [
+          {
+            "params": [],
+            "returns": "string"
+          }
+        ]
+      }
+    }
+  },
+  "functions": {
+    "println": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "void"
+      }
+    ],
+    "parse_url": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "Url"
+      }
+    ],
+    "parse_request": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "Message"
+      }
+    ],
+    "parse_response": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "Message"
+      }
+    ],
+    "percent_decode": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "string"
+      }
+    ],
+    "percent_encode": [
+      {
+        "params": [
+          "string"
+        ],
+        "returns": "string"
+      }
+    ]
+  },
+  "context": {
+    "proxy": "Proxy"
+  }
+}
