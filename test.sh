@@ -24,7 +24,7 @@ ok "third_party/squid matches squid.lock"
 cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release >"$WORK/cmake.log" 2>&1 ||
   { tail -30 "$WORK/cmake.log" >&2; fail "cmake configure ($BUILD_DIR)"; }
 cmake --build "$BUILD_DIR" -j2 >"$WORK/build.log" 2>&1 ||
-  { tail -30 "$WORK/build.log" >&2; fail "cmake build ($BUILD_DIR)"; }
+  { grep -n -B 3 -A 4 "error:" "$WORK/build.log" >&2 || true; tail -30 "$WORK/build.log" >&2; fail "cmake build ($BUILD_DIR)"; }
 ok "host build ($BUILD_DIR)"
 
 want_version="lmproxy $(sed -n 's/^project(lmproxy VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
