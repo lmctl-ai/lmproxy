@@ -50,6 +50,7 @@
 #define HAVE_SYS_SELECT_H 1
 #define HAVE_SYS_SOCKET_H 1
 #define HAVE_SYS_STAT_H 1
+#define HAVE_SYS_STATVFS_H 1
 #define HAVE_SYS_TIME_H 1
 #define HAVE_SYS_TYPES_H 1
 #define HAVE_SYS_UIO_H 1
@@ -67,12 +68,17 @@
 #define HAVE_INET_PTON 1
 #define HAVE_LOCALTIME_R 1
 #define HAVE_MEMMOVE 1
+#if defined(__APPLE__)
+#define HAVE_MEMRCHR 0
+#else
 #define HAVE_MEMRCHR 1
+#endif
 #define HAVE_MEMSET 1
 #define HAVE_MKTIME 1
 #define HAVE_MODE_T 1
 #define HAVE_SNPRINTF 1
 #define HAVE_SRANDOM 1
+#define HAVE_STATVFS 1
 #define HAVE_STRCASECMP 1
 #define HAVE_STRERROR 1
 #define HAVE_STRLCAT 1
@@ -83,6 +89,12 @@
 #define HAVE_SYSLOG 1
 #define HAVE_TIMEGM 1
 #define HAVE_VSNPRINTF 1
+
+/* Native POSIX types: prevent Squid from defining incompatible fallback structs. */
+#define HAVE_CMSGHDR 1
+#define HAVE_IOVEC 1
+#define HAVE_MSGHDR 1
+#define HAVE_SOCKADDR_UN 1
 
 /* Types */
 #define HAVE_IN_ADDR_T 1

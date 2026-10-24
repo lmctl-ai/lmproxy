@@ -54,6 +54,8 @@ set(SQUID_SOURCES
   compat/xstring.cc
   compat/assert.cc
   compat/compat.cc
+  # macOS lacks GNU memrchr; upstream supplies the guarded portable fallback.
+  compat/memrchr.cc
   # memory allocation (minimal, non-pool implementation)
   src/mem/minimal.cc
   # header-block terminator scan used by the HTTP/1 parser
