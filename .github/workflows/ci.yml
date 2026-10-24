@@ -96,3 +96,49 @@ jobs:
           name: lmproxy-${{ matrix.name }}
           path: dist/
           if-no-files-found: error
+
+  # Push-and-publish: on every main push (and full manual re-runs) collect
+  # the matrix binaries and force-update the rolling `dist` branch, so the
+  # latest per-OS executables live at permanent URLs. No approval, no
+  # release object; the branch head is always "the latest main build".
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # push to the dist branch
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: lmproxy-*
+          path: ${{ runner.temp }}/bins
+          merge-multiple: true
+
+      - name: checksums
+        run: (cd "${{ runner.temp }}/bins" && sha256sum lmproxy-* > SHA256SUMS)
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: true # the token must land in .git/config for the push
+          fetch-depth: 1
+
+      - name: update the dist branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin dist && git rev-parse -q --verify FETCH_HEAD; then
+            git checkout -B dist FETCH_HEAD
+          else
+            git checkout --orphan dist
+          fi
+          git rm -rf . >/dev/null 2>&1 || true
+          cp "${{ runner.temp }}/bins"/lmproxy-* "${{ runner.temp }}/bins"/SHA256SUMS .
+          cp LICENSE THIRD_PARTY_NOTICES.md . 2>/dev/null || true
+          git add -A
+          if git diff --cached --quiet; then
+            echo "dist branch already up to date"
+          else
+            git commit -m "dist: lmproxy binaries from ${GITHUB_SHA}"
+          fi
+          git push --force-with-lease origin dist
