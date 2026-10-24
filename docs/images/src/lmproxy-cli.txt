@@ -1,0 +1,16 @@
+$ lmproxy --version && lmproxy --dsl-signatures | head -n 14
+lmproxy 0.1.0
+context proxy: Proxy
+fn float_list() -> FloatList
+fn int_list() -> IntList
+fn parse_request(string) -> Message
+fn parse_response(string) -> Message
+fn parse_url(string) -> Url
+fn percent_decode(string) -> string
+fn percent_encode(string) -> string
+fn println(string) -> void
+fn str_contains(string, string) -> bool
+fn str_ends_with(string, string) -> bool
+fn str_find(string, string) -> int
+fn str_is_float(string) -> bool
+fn str_is_int(string) -> bool

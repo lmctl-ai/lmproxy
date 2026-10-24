@@ -1,0 +1,14 @@
+$ lmscript examples/parse-url.lms build/parse-url.dslb && lmproxy --dsl build/parse-url.dslb
+http://user@example.com:8080/docs/index.html?lang=en
+  scheme : http
+  host   : example.com
+  port   : 8080
+  path   : /docs/index.html?lang=en
+  user   : user
+https://db.example.org:5432
+  scheme : https
+  host   : db.example.org
+  port   : 5432
+  path   : /
+  user   :
+{"ok": true, "result": null}

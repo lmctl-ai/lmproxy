@@ -1,0 +1,7 @@
+$ lmscript examples/inspect-response.lms build/inspect-response.dslb && lmproxy --dsl build/inspect-response.dslb
+HTTP/1.1 301 Moved Permanently
+redirects to -> https://example.com/new
+4 header fields
+default port of https url: 443
+explicit port present: false
+{"ok": true, "result": null}

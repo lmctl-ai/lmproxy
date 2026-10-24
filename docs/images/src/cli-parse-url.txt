@@ -1,0 +1,2 @@
+$ lmproxy parse-url 'https://user:pass@api.example.com:8443/v1/resource?query=1#frag'
+{"valid":true,"scheme":"https","host":"api.example.com","host_is_ip":false,"userinfo":"user:pass","port":8443,"path":"/v1/resource?query=1#frag"}
