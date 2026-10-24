@@ -1,0 +1,37 @@
+# Chapter: Basics - parse a URL
+# Shows: proxy.parse_url, Url.scheme/host/port/path/userinfo/has_port, string concat
+# Run: lmscript examples/parse-url.lms      (or: lmctl script examples/parse-url.lms)
+# Needs: nothing (offline). Run the bytecode with: lmproxy --dsl build/parse-url.dslb
+# exit: 0
+# expect:
+#|http://user@example.com:8080/docs/index.html?lang=en
+#|  scheme : http
+#|  host   : example.com
+#|  port   : 8080
+#|  path   : /docs/index.html?lang=en
+#|  user   : user
+#|https://db.example.org:5432
+#|  scheme : https
+#|  host   : db.example.org
+#|  port   : 5432
+#|  path   : /
+#|  user   :
+p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+
+let urls = str_list()
+  .add("http://user@example.com:8080/docs/index.html?lang=en")
+  .add("https://db.example.org:5432");
+
+for (i in range(0, urls.len())) {
+  let u = proxy.parse_url(urls.at(i));
+  println(u.raw());
+  println("  scheme : " + u.scheme());
+  println("  host   : " + u.host());
+  println("  port   : " + str(u.port()));
+  println("  path   : " + u.path());
+  if (u.userinfo() == "") { println("  user   :"); }
+  else { println("  user   : " + u.userinfo()); }
+}
+
+end _dsl_
+savedsl(p, "build/parse-url.dslb");

@@ -1,0 +1,30 @@
+# Chapter: Basics - inspect an HTTP request
+# Shows: proxy.parse_request, Message.method/target/version/header/header_names
+# Run: lmscript examples/inspect-request.lms      (then: lmproxy --dsl build/inspect-request.dslb)
+# Needs: nothing (offline); the raw request is embedded below.
+# exit: 0
+# expect:
+#|GET /index.html HTTP/1.1
+#|host -> example.com
+#|accept -> */*
+#|3 header fields
+p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+
+let raw = "GET /index.html HTTP/1.1\r\n"
+        + "Host: example.com\r\n"
+        + "Accept: */*\r\n"
+        + "User-Agent: lmproxy-example\r\n"
+        + "\r\n";
+let m = proxy.parse_request(raw);
+
+if (!m.complete()) {
+  println("parse error: " + m.error());
+} else {
+  println(m.method() + " " + m.target() + " " + m.version());
+  println("host -> " + m.header("HOST"));
+  println("accept -> " + m.header("Accept"));
+  println(str(m.header_count()) + " header fields");
+}
+
+end _dsl_
+savedsl(p, "build/inspect-request.dslb");

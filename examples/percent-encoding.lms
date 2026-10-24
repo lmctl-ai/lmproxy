@@ -1,0 +1,19 @@
+# Chapter: Basics - percent-encoding
+# Shows: proxy.percent_decode/percent_encode round-trip, Url.path on escaped input
+# Run: lmscript examples/percent-encoding.lms      (then: lmproxy --dsl build/percent-encoding.dslb)
+# Needs: nothing (offline).
+# exit: 0
+# expect:
+#|raw     : /my%20dir/report%231.pdf
+#|decoded : /my dir/report#1.pdf
+#|encoded : /my%20dir/report%231.pdf
+p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+
+let u = proxy.parse_url("http://files.example.org/my%20dir/report%231.pdf");
+println("raw     : " + u.path());
+let decoded = proxy.percent_decode(u.path());
+println("decoded : " + decoded);
+println("encoded : " + proxy.percent_encode(decoded));
+
+end _dsl_
+savedsl(p, "build/percent-encoding.dslb");

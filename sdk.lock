@@ -1,0 +1,7 @@
+repo=https://github.com/lmctl-ai/lmcode-cpp
+commit=a686353d5a9a2d8dc949fafca6fbe6d8a609dce1
+sha256.cpp/dslvm.hpp=6fafb03b9bc21f33cb82eab9f2c859010b72f02a1b0adf4d303061d089a20291
+sha256.cpp/stdlib/collections.hpp=471f8afed1b862cb6d6ac5086915a3488a586691ee2d607b010a3f939c8a2379
+sha256.cpp/stdlib/math.hpp=29826dbf7d3e0bd4567594db4ec44f0bb73638a7da84171846b64546aa08cca7
+sha256.cpp/stdlib/string.hpp=7bd58a2f5b5cd4cd2b6bbeb9634a7ed7bed6e824dd2f25e1869c57ce452b6d20
+sha256.cpp/stdlib/testing.hpp=0a10691eb9fdcdb79c0da34221223691563c5bc293245740f79478f2636aa9f7
