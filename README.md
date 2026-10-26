@@ -15,12 +15,12 @@ or writing a config file.
 | **URL parsing & decomposition** | **Request message inspection** | **Response status & redirect** |
 | --- | --- | --- |
 | <img src="docs/images/parse-url.png" width="290"> | <img src="docs/images/inspect-request.png" width="290"> | <img src="docs/images/inspect-response.png" width="290"> |
-| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/parse-url.lms` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-request.lms` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-response.lms` |
+| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/parse-url.lms` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-request.lms` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-response.lms` |
 
 | **Percent-encoding** | **CLI parse-url JSON** | **lmproxy CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/percent-encoding.png" width="290"> | <img src="docs/images/cli-parse-url.png" width="290"> | <img src="docs/images/lmproxy-cli.png" width="290"> |
-| Percent-decode and re-encode URL path components.<br>`lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed DSL signatures.<br>`lmproxy --version && lmproxy --dsl-signatures` |
+| Percent-decode and re-encode URL path components.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed DSL signatures.<br>`lmproxy --version && lmproxy --dsl-signatures` |
 
 ## Build
 
