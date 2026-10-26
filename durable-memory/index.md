@@ -11,9 +11,9 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 | [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, Squid compatibility shims |
 
 ## Architecture & Build
-- Host C++ entry points in `cpp/` embed `dslvm::Registry` and Squid 7 parser.
+- Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `ee1f084`) and Squid 7 parser.
 - Build: `cmake -S . -B build -G Ninja && cmake --build build`.
-- Test: `./test.sh` runs 26 checks (SDK header, Squid lock, CLI flags, URL parsing, request/response parsing, DSL bytecode runs, and static executable check).
+- Test: `./test.sh` runs 26 checks (9-file SDK pin, Squid lock, CLI flags, full and `--without-std` signature parity with `lmscript >= 0.2.420`, URL parsing, request/response parsing, DSL bytecode runs, and static executable check).
 
 ## Adding an example or function
 
@@ -24,7 +24,7 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 4. Capture output to `docs/images/src/<name>.txt`, run `scripts/render-readme-images.sh`, and update `README.md` gallery.
 
 ### Adding a host function/method
-1. Declare in `schema/lmproxy.dsl.json`.
+1. Declare in `schema/lmproxy.host.json` (CMake copies exact host-only bytes to `schema/lmproxy.dsl.json`; `lmscript >= 0.2.420` supplies std implicitly).
 2. Implement in `cpp/` and register via `dslvm::Registry`.
 3. Verify `./test.sh` passes and schema signatures match compiler.
 

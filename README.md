@@ -64,9 +64,9 @@ See `examples/` for runnable scripts.
 ## Repository layout
 
 - `cpp/` — the CLI host: DSL VM integration plus the Squid wrapper
-- `schema/lmproxy.dsl.json` — the DSL schema (embedded into the binary)
+- `schema/lmproxy.host.json` — the host-only DSL schema (copied to `schema/lmproxy.dsl.json` and embedded into the binary; `lmscript` >= 0.2.420 supplies the built-in standard library implicitly)
 - `examples/` — lmscript examples
-- `scripts/` — vendoring (Squid source, lmcode-cpp SDK) and compiler selection
+- `scripts/` — vendoring (Squid source, `lmcode-cpp` SDK pinned in `sdk.lock`) and compiler selection
 - `third_party/` — downloaded upstream sources (git-ignored, pinned by `squid.lock`)
 
 ## License and company

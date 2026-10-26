@@ -53,7 +53,22 @@ print('all', len(sigs), 'registry members listed in --dsl-schema summary')
 PY
 ok "--dsl-schema summary lists every registry member"
 diff -u <("$LMSCRIPT" --dsl-signatures schema/lmproxy.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
-ok "typed registry signatures match compiler schema signatures"
+cmp schema/lmproxy.host.json schema/lmproxy.dsl.json || fail "generated schema differs from host-only input"
+python3 scripts/merge-std.py --host-only schema/lmproxy.dsl.json "$WORK/host-only-schema.json"
+cmp schema/lmproxy.dsl.json "$WORK/host-only-schema.json" || fail "embedded schema still declares standard members"
+"$HOST" --dsl-signatures >"$WORK/registry-signatures.txt"
+"$LMSCRIPT" --dsl-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
+python3 - "$WORK" <<'PYHOST'
+from pathlib import Path
+import sys
+work=Path(sys.argv[1])
+registry=set((work/'registry-signatures.txt').read_text().splitlines())
+standard=set((work/'standard-signatures.txt').read_text().splitlines())
+assert len(standard)==72, len(standard)
+(work/'host-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
+PYHOST
+diff -u <("$LMSCRIPT" --dsl-signatures schema/lmproxy.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
+ok "typed registry signatures match compiler schema signatures (full and --without-std)"
 
 # --- parse-url ---
 out="$("$HOST" parse-url http://user@example.com:8080/a?b=1)"
@@ -137,14 +152,20 @@ if (names.len() != 2 || names.at(0) != "A" || names.at(1) != "B") { println("bad
 let u = proxy.parse_url("http://example.com/");
 if (!u.valid() || u.has_port() || u.port() != 80 || u.host_is_ip()) { println("bad"); }
 if (proxy.percent_decode("a%20b") != "a b") { println("bad"); }
+let fpath = "$WORK/std-file.txt";
+file_write(fpath, "alpha\n");
+file_append(fpath, "beta");
+if (!file_exists(fpath) || file_read(fpath) != "alpha\nbeta") { println("bad"); }
+let lines = file_lines(fpath);
+if (lines.len() != 2 || lines.at(0) != "alpha" || lines.at(1) != "beta") { println("bad"); }
 println("done");
 end _dsl_
 savedsl(p, "$WORK/bad-usage.dslb");
 EOF
 "$LMSCRIPT" "$WORK/bad-usage.lms" "$WORK/bad-usage.dslb" >/dev/null || fail "bad-usage compile"
 out="$("$HOST" --dsl "$WORK/bad-usage.dslb")"
-grep -q '^done$' <<<"$out" || fail "StrList/percent/flags checks failed: $out"
-ok "StrList.at/len, Url flags, percent_decode behave"
+grep -q '^done$' <<<"$out" || fail "StrList/percent/flags/file_* checks failed: $out"
+ok "StrList.at/len, Url flags, percent_decode, and std file_* behave"
 
 cat > "$WORK/oob.lms" <<EOF
 p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
