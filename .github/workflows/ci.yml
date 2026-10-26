@@ -9,11 +9,6 @@ on:
         default: "all"
         type: choice
         options: [all, linux-x64, linux-arm64, macos-arm64, macos-x64]
-  push:
-    branches: [main]
-    paths-ignore: ["durable-memory/**", "**.md"]
-  pull_request:
-    paths-ignore: ["durable-memory/**", "**.md"]
 
 # Squid upstream supports POSIX hosts only (no native Windows port in the
 # 7.x series), so the matrix covers Linux and macOS, both architectures.
