@@ -10,6 +10,16 @@ that can be driven from the command line or scripted with
 inspect how Squid interprets URLs and HTTP messages without running a daemon
 or writing a config file.
 
+## Install lmctl
+
+Everything in this repository runs through [lmctl](https://lmctl.com), the core tool of the lmctl family. Install it once, then run any `.lms` file or raw URL:
+
+```bash
+npm install -g @lmctl-ai/lmctl
+lmctl autorun path/to/example.lms
+lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/example.lms
+```
+
 ## Gallery
 
 | **URL parsing & decomposition** | **Request message inspection** | **Response status & redirect** |
