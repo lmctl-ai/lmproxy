@@ -5,6 +5,7 @@
 #include "stdlib/string.hpp"
 #include "stdlib/collections.hpp"
 #include "schema_embedded.hpp"
+#include "engine/engine.hpp"
 
 #include <cctype>
 #include <cstdio>
@@ -237,6 +238,9 @@ int main(int argc, char **argv) {
       "       lmproxy parse-url URL [URL ...]\n"
       "       lmproxy parse-request FILE\n"
       "       lmproxy parse-response FILE\n"
+      "       lmproxy forward [--port P] [--bind ADDR] [--ssl-bump]\n"
+      "       lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump]\n"
+      "       lmproxy run --config FILE\n"
       "       lmproxy --dsl FILE [FILE ...]\n";
   if (argc == 2 && std::string(argv[1]) == "--version") {
     std::cout << "lmproxy " LMPROXY_VERSION "\n";
@@ -279,6 +283,35 @@ int main(int argc, char **argv) {
                                                            : lmproxy::parse_response(raw);
     std::cout << message_json(m) << "\n";
     return std::cout ? 0 : 4;
+  }
+  if (argc >= 2 && (std::string(argv[1]) == "forward" || std::string(argv[1]) == "intercept" || std::string(argv[1]) == "run")) {
+    lmproxy::ProxyConfig cfg;
+    cfg.mode = argv[1];
+    if (cfg.mode == "intercept") {
+      cfg.port = 3129;
+    }
+    for (int i = 2; i < argc; ++i) {
+      std::string arg = argv[i];
+      if ((arg == "--port" || arg == "-p") && i + 1 < argc) {
+        cfg.port = std::stoi(argv[++i]);
+      } else if ((arg == "--bind" || arg == "-b") && i + 1 < argc) {
+        cfg.bindAddress = argv[++i];
+      } else if (arg == "--ssl-bump") {
+        cfg.sslBump = true;
+      } else if (arg == "--ca-cert" && i + 1 < argc) {
+        cfg.caCertPath = argv[++i];
+      } else if (arg == "--ca-key" && i + 1 < argc) {
+        cfg.caKeyPath = argv[++i];
+      } else if ((arg == "--config" || arg == "-c") && i + 1 < argc) {
+        cfg.customConfigFile = argv[++i];
+      } else if ((arg == "--debug" || arg == "-d") && i + 1 < argc) {
+        cfg.debugLevel = std::stoi(argv[++i]);
+      } else {
+        std::cerr << usage;
+        return 2;
+      }
+    }
+    return lmproxy::run_proxy_engine(cfg);
   }
   if (argc >= 3 && std::string(argv[1]) == "--dsl") {
     for (int i = 2; i < argc; ++i) {

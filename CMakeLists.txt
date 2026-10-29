@@ -11,64 +11,29 @@ endif()
 option(LMPROXY_FULL_STATIC "Link glibc statically too (off per policy: glibc stays dynamic)" OFF)
 set(LMPROXY_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.host.json")
 
-# ---- vendored Squid subset -------------------------------------------------
-# third_party/squid is git-ignored and synced by scripts/sync-squid.sh, pinned
-# by squid.lock. Only the URL/HTTP-1 parsing subset is compiled; hub globals
-# upstream defines in daemon-only translation units live in cpp/squidshim/.
-set(SQUID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/squid")
+# ---- OpenSSL (Static) -------------------------------------------------------
+set(OPENSSL_USE_STATIC_LIBS TRUE)
+find_package(OpenSSL REQUIRED)
 
-# Curated Squid sources (see THIRD_PARTY_NOTICES.md). Extend only with sources
-# the lmproxy wrapper actually pulls in; keep the closure small on purpose.
-set(SQUID_SOURCES
-  # URL parsing
-  src/anyp/Uri.cc
-  src/anyp/UriScheme.cc
-  src/anyp/ProtocolType.cc
-  src/anyp/Host.cc
-  # HTTP/1 message first-line + tokenizer parsing
-  src/http/one/Parser.cc
-  src/http/one/RequestParser.cc
-  src/http/one/ResponseParser.cc
-  src/http/one/Tokenizer.cc
-  src/http/RequestMethod.cc
-  src/http/MethodType.cc
-  src/http/StatusCode.cc
-  # tokenizer core
-  src/parser/Tokenizer.cc
-  src/parser/BinaryTokenizer.cc
-  # SBuf and its support
-  src/sbuf/SBuf.cc
-  src/sbuf/MemBlob.cc
-  src/sbuf/Algorithms.cc
-  # base utilities
-  src/base/CharacterSet.cc
-  src/base/TextException.cc
-  src/base/InstanceId.cc
-  src/base/Here.cc
-  src/base/IoManip.cc
-  # IP address container used by Uri hosts
-  src/ip/Address.cc
-  src/ip/tools.cc
-  # percent-encoding (rfc1738) and small C utilities
-  lib/rfc1738.c
-  compat/xalloc.cc
-  compat/xstring.cc
-  compat/assert.cc
-  compat/compat.cc
-  # macOS lacks GNU memrchr; upstream supplies the guarded portable fallback.
-  compat/memrchr.cc
-  # memory allocation (minimal, non-pool implementation)
-  src/mem/minimal.cc
-  # header-block terminator scan used by the HTTP/1 parser
-  src/mime_header.cc
-  # SBuf destruct-time statistics
-  src/sbuf/Stats.cc
-  # Raw debug-printing helper
-  src/base/Raw.cc
-  # Assure/ReportAndThrow support
-  src/base/Assure.cc
+# ---- Full Squid Engine (Static Convenience Libraries) -----------------------
+set(SQUID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/squid")
+set(SQUID_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/squid-build")
+set(SQUID_ENGINE_LIB "${SQUID_BUILD_DIR}/src/libsquid_objects.a")
+
+# Ensure the embedded Squid engine static libraries are configured and compiled
+message(STATUS "Configuring and building embedded Squid engine...")
+execute_process(
+  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-squid.sh"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  ENVIRONMENT
+    "BUILD_DIR=${SQUID_BUILD_DIR}"
+    "SOURCE_DIR=${SQUID_ROOT}"
+    "OPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}"
+  RESULT_VARIABLE SQUID_BUILD_RESULT
 )
-list(TRANSFORM SQUID_SOURCES PREPEND "${SQUID_ROOT}/")
+if(NOT SQUID_BUILD_RESULT EQUAL 0)
+  message(FATAL_ERROR "Failed to build embedded Squid engine (exit code: ${SQUID_BUILD_RESULT})")
+endif()
 
 # ---- embedded DSL schema ----------------------------------------------------
 set(SCHEMA_JSON "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.dsl.json")
@@ -90,42 +55,68 @@ add_custom_target(lmproxy_schema DEPENDS "${GENERATED_SCHEMA}")
 add_executable(lmproxy
   cpp/main.cpp
   cpp/proxy.cpp
-  cpp/squidshim/stubs.cc
-  ${SQUID_SOURCES}
+  cpp/engine/config.cpp
+  cpp/engine/engine.cpp
   "${GENERATED_SCHEMA}"
 )
 add_dependencies(lmproxy lmproxy_schema)
 
-# cpp/squidshim/ (our autoconf.h stand-in and stubs) shadows upstream include/
-# and must come first; otherwise the include layout mirrors the squid build.
 target_include_directories(lmproxy PRIVATE
-  cpp/squidshim
   cpp
+  cpp/engine
+  "${SQUID_BUILD_DIR}/include"
   "${SQUID_ROOT}/include"
   "${SQUID_ROOT}/lib"
   "${SQUID_ROOT}/src"
   "${SQUID_ROOT}"
   "${GENERATED_DIR}"
+  ${OPENSSL_INCLUDE_DIR}
 )
-target_compile_definitions(lmproxy PRIVATE HAVE_CONFIG_H)
-# Squid sources are third-party: silence their warnings, keep ours strict.
-set_source_files_properties(${SQUID_SOURCES} PROPERTIES
-  COMPILE_OPTIONS "-w"
-)
-# squid's compat/debug.h defines a GNU named-variadic macro; GCC cannot
-# pragma-control the pedantic warning it triggers, so silence it just for
-# the TUs that include squid headers.
-set_source_files_properties(cpp/proxy.cpp cpp/squidshim/stubs.cc PROPERTIES
-  COMPILE_OPTIONS "-Wno-variadic-macros"
-)
-target_compile_options(lmproxy PRIVATE -Wall -Wextra -Wpedantic)
-target_compile_definitions(lmproxy PRIVATE LMPROXY_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(lmproxy PRIVATE HAVE_CONFIG_H LMPROXY_VERSION="${PROJECT_VERSION}")
+target_compile_options(lmproxy PRIVATE -Wall -Wextra)
 
-# Static linking: no runtime dependency beyond the OS C library.
-# ("Clang" also matches AppleClang; macOS has no -static/-static-libstdc++.)
-if((CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT APPLE)
-  target_link_options(lmproxy PRIVATE -static-libstdc++ -static-libgcc)
-  if(LMPROXY_FULL_STATIC)
-    target_link_options(lmproxy PRIVATE -static)
+# Gather static convenience libraries from staged Squid engine
+file(GLOB_RECURSE ALL_SQUID_A "${SQUID_BUILD_DIR}/*.a")
+set(SQUID_STATIC_LIBS "")
+foreach(a_file ${ALL_SQUID_A})
+  get_filename_component(a_name "${a_file}" NAME)
+  if(NOT "${a_name}" STREQUAL "libcompatsquid.a" AND NOT "${a_name}" STREQUAL "libsquid_objects.a")
+    list(APPEND SQUID_STATIC_LIBS "${a_file}")
+  endif()
+endforeach()
+
+if(APPLE)
+  target_link_libraries(lmproxy PRIVATE
+    -Wl,-force_load,"${SQUID_ENGINE_LIB}"
+    ${SQUID_STATIC_LIBS}
+    "${SQUID_BUILD_DIR}/compat/.libs/libcompatsquid.a"
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    "-framework CoreFoundation"
+    "-framework Security"
+    z
+    resolv
+  )
+else()
+  target_link_libraries(lmproxy PRIVATE
+    -Wl,--whole-archive "${SQUID_ENGINE_LIB}" -Wl,--no-whole-archive
+    -Wl,--start-group
+    ${SQUID_STATIC_LIBS}
+    "${SQUID_BUILD_DIR}/compat/.libs/libcompatsquid.a"
+    -Wl,--end-group
+    OpenSSL::SSL
+    OpenSSL::Crypto
+    crypt
+    atomic
+    pthread
+    dl
+    rt
+    m
+  )
+  if((CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang") AND NOT APPLE)
+    target_link_options(lmproxy PRIVATE -static-libstdc++ -static-libgcc)
+    if(LMPROXY_FULL_STATIC)
+      target_link_options(lmproxy PRIVATE -static)
+    endif()
   endif()
 endif()

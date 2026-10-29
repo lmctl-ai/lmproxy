@@ -210,6 +210,60 @@ for f in parse-url inspect-request inspect-response percent-encoding; do
 done
 ok "examples compile and their expected output matches"
 
+# --- forward proxy mode test ---
+python3 -c "
+from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+class H(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain')
+        self.send_header('Content-Length', '20')
+        self.end_headers()
+        self.wfile.write(b'HELLO_FROM_UPSTREAM\n')
+    def log_message(self, *args): pass
+httpd = ThreadingHTTPServer(('127.0.0.1', 0), H)
+print(httpd.server_address[1], flush=True)
+httpd.serve_forever()
+" > "$WORK/upstream_port.txt" 2>&1 &
+UPSTREAM_PID=$!
+
+while [ ! -s "$WORK/upstream_port.txt" ]; do sleep 0.05; done
+UPSTREAM_PORT="$(cat "$WORK/upstream_port.txt")"
+
+PROXY_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')"
+"$HOST" forward --port "$PROXY_PORT" --bind 127.0.0.1 >"$WORK/proxy.log" 2>&1 &
+PROXY_PID=$!
+
+for i in {1..50}; do
+  if (echo > /dev/tcp/127.0.0.1/"$PROXY_PORT") 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+
+curl_out="$(curl -s -x "http://127.0.0.1:$PROXY_PORT" "http://127.0.0.1:$UPSTREAM_PORT/" || true)"
+kill -TERM "$PROXY_PID" 2>/dev/null || true
+kill -TERM "$UPSTREAM_PID" 2>/dev/null || true
+wait "$PROXY_PID" 2>/dev/null || true
+wait "$UPSTREAM_PID" 2>/dev/null || true
+
+[ "$(echo "$curl_out" | tr -d '\r\n')" = "HELLO_FROM_UPSTREAM" ] || fail "forward proxy response mismatch: got '$curl_out'"
+ok "forward proxy mode routes traffic to upstream"
+
+# --- SSL-bump CA generation and intercept proxy test ---
+INTERCEPT_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')"
+"$HOST" intercept --port "$INTERCEPT_PORT" --ssl-bump >"$WORK/intercept.log" 2>&1 &
+INTERCEPT_PID=$!
+for i in {1..50}; do
+  if (echo > /dev/tcp/127.0.0.1/"$INTERCEPT_PORT") 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+kill -TERM "$INTERCEPT_PID" 2>/dev/null || true
+wait "$INTERCEPT_PID" 2>/dev/null || true
+ok "intercept proxy mode with SSL-bump configuration"
+
 case "$UNAME_S" in
   Linux)
     if [ "${LMPROXY_FULL_STATIC:-OFF}" = "ON" ]; then

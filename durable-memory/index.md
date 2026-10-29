@@ -1,19 +1,19 @@
 # lmproxy durable memory
 
 Technical documentation and operational notes for `lmproxy`.
-`lmproxy` embeds Squid 7's URL and HTTP/1.1 message parsing engine as a standalone CLI host for lmscript.
+`lmproxy` embeds Squid 7's complete engine (forward proxy, transparent interception, SSL-bump TLS interception, URL and HTTP/1.1 message parsers) as a standalone CLI host and proxy daemon for lmscript.
 Repository: https://github.com/lmctl-ai/lmproxy.
 
 ## Document map
 
 | File | Contents |
 | --- | --- |
-| [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, Squid compatibility shims |
+| [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, Squid engine architecture |
 
 ## Architecture & Build
-- Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `ee1f084`) and Squid 7 parser.
+- Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `ee1f084`), Squid 7 proxy engine, and static OpenSSL.
 - Build: `cmake -S . -B build -G Ninja && cmake --build build`.
-- Test: `./test.sh` runs 26 checks (9-file SDK pin, Squid lock, CLI flags, full and `--without-std` signature parity with `lmscript >= 0.2.420`, URL parsing, request/response parsing, DSL bytecode runs, and dynamic glibc / system library linkage check).
+- Test: `./test.sh` runs 28 checks (SDK pin, Squid lock, CLI flags, full and `--without-std` signature parity with `lmscript >= 0.2.420`, URL parsing, request/response parsing, DSL bytecode runs, forward proxy routing to upstream, intercept SSL-bump CA generation, and dynamic glibc / system library linkage check).
 
 ## Adding an example or function
 

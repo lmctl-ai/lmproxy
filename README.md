@@ -1,14 +1,8 @@
 # lmproxy
 
-Squid's HTTP and URL machinery as a single statically-linked, scriptable CLI —
-not a proxy server.
+Squid's HTTP and URL machinery as a single statically-linked, scriptable CLI and proxy daemon.
 
-lmproxy wraps the [Squid](https://www.squid-cache.org) 7 parsing engine (URL
-parser, HTTP/1.1 request/response parsers) in one dependency-free executable
-that can be driven from the command line or scripted with
-[lmscript](https://github.com/lmctl-ai). It exists for debugging and research:
-inspect how Squid interprets URLs and HTTP messages without running a daemon
-or writing a config file.
+lmproxy embeds the complete [Squid](https://www.squid-cache.org) 7 engine (forward proxy daemon, transparent interception, SSL-bump TLS interception, and URL & HTTP/1.1 message parsers) in one dependency-free executable that can be driven from the command line or scripted with [lmscript](https://github.com/lmctl-ai). It provides full proxy server capabilities alongside standalone parsing tools for inspecting how Squid interprets traffic without requiring external config files.
 
 ## Install lmctl
 
@@ -53,6 +47,9 @@ lmproxy --dsl-signatures
 lmproxy parse-url URL...
 lmproxy parse-request FILE   # HTTP/1.x request message
 lmproxy parse-response FILE  # HTTP/1.x response message
+lmproxy forward [--port P] [--bind ADDR] [--ssl-bump]
+lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump]
+lmproxy run --config FILE
 lmproxy --dsl FILE [FILE ...]
 ```
 
