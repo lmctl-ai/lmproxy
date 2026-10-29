@@ -8,7 +8,8 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 
 | File | Contents |
 | --- | --- |
-| [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, Squid engine architecture |
+| [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, and standard declarations |
+| [02-squid-engine-architecture.md](02-squid-engine-architecture.md) | Squid 7 full engine architecture, convenience static libraries, ephemeral runtime, and subcommands |
 
 ## Architecture & Build
 - Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `ee1f084`), Squid 7 proxy engine, and static OpenSSL.
