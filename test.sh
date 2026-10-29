@@ -331,7 +331,7 @@ ok "traffic tap, record, route, and redirect in forward proxy mode"
 
 # --- HTTPS SSL-bump end-to-end interception and swap ---
 openssl req -new -newkey rsa:2048 -days 1 -nodes -x509 -keyout "$WORK/testca.key" -out "$WORK/testca.crt" -subj "/CN=LMProxy Test CA" 2>/dev/null
-openssl req -new -newkey rsa:2048 -nodes -keyout "$WORK/server.key" -out "$WORK/server.csr" -subj "/CN=localhost" 2>/dev/null
+openssl req -new -newkey rsa:2048 -nodes -keyout "$WORK/server.key" -out "$WORK/server.csr" -subj "/CN=127.0.0.1" 2>/dev/null
 openssl x509 -req -in "$WORK/server.csr" -CA "$WORK/testca.crt" -CAkey "$WORK/testca.key" -CAcreateserial -out "$WORK/server.crt" -days 1 2>/dev/null
 
 python3 -c "
@@ -381,10 +381,10 @@ for i in {1..50}; do
   sleep 0.1
 done
 
-r_https_orig="$(curl -s -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://localhost:$ORIGIN_PORT/orig")"
+r_https_orig="$(curl -s -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://127.0.0.1:$ORIGIN_PORT/orig")"
 [ "$r_https_orig" = "HTTPS_ORIGINAL_OK" ] || fail "HTTPS origin passthrough mismatch: $r_https_orig"
 
-r_https_swap="$(curl -s -L -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://localhost:$ORIGIN_PORT/swap")"
+r_https_swap="$(curl -s -L -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://127.0.0.1:$ORIGIN_PORT/swap")"
 [ "$r_https_swap" = "HTTPS_SWAPPED_OK" ] || fail "HTTPS redirect swap mismatch: $r_https_swap"
 
 kill -TERM "$PROXY_PID" 2>/dev/null || true
