@@ -47,11 +47,20 @@ lmproxy --dsl-signatures
 lmproxy parse-url URL...
 lmproxy parse-request FILE   # HTTP/1.x request message
 lmproxy parse-response FILE  # HTTP/1.x response message
-lmproxy forward [--port P] [--bind ADDR] [--ssl-bump]
-lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump]
+lmproxy forward [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]
+lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]
 lmproxy run --config FILE
+lmproxy certgen [ARGS...]
 lmproxy --dsl FILE [FILE ...]
 ```
+
+### Reverse Engineering & Traffic Swapping
+
+- `--tap`: Print intercepted HTTP & HTTPS traffic in real time to stderr.
+- `--record FILE`: Log structured request/response events into a JSONL file.
+- `--route PATTERN=HOST:PORT`: Transparently route matched traffic to an alternate backend origin.
+- `--redirect PATTERN=URL`: Intercept matching requests and swap responses with an HTTP 307 redirect.
+- `--ssl-bump`: Decrypt and inspect HTTPS traffic using an embedded, on-the-fly certificate generator helper.
 
 The `parse-*` commands are the simple entry points; the `--dsl` interface
 runs lmscript bytecode against the same engine with structured access to

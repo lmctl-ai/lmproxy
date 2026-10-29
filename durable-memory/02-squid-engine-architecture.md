@@ -60,12 +60,14 @@ Squid natively requires a configuration file (`squid.conf`), MIME tables, icon p
 
 In addition to the original message parsing and DSL execution commands, `lmproxy` provides:
 
-- `lmproxy forward [--port <P>] [--bind <ADDR>] [--ssl-bump] [--ca-cert <CRT>] [--ca-key <KEY>]`
+- `lmproxy forward [--port <P>] [--bind <ADDR>] [--ssl-bump] [--ca-cert <CRT>] [--ca-key <KEY>] [--tap] [--record <FILE>] [--route <PAT=HOST:PORT>] [--redirect <PAT=URL>]`
   Runs a standard forward proxy daemon. Default port `3128`, default bind `0.0.0.0`.
-- `lmproxy intercept [--port <P>] [--bind <ADDR>] [--ssl-bump] [--ca-cert <CRT>] [--ca-key <KEY>]`
+- `lmproxy intercept [--port <P>] [--bind <ADDR>] [--ssl-bump] [--ca-cert <CRT>] [--ca-key <KEY>] [--tap] [--record <FILE>] [--route <PAT=HOST:PORT>] [--redirect <PAT=URL>]`
   Runs a transparent interception proxy daemon. Default port `3129`, default bind `0.0.0.0`.
 - `lmproxy run --config <SQUID.CONF>`
   Runs the embedded Squid engine directly with an existing custom Squid configuration file.
+- `lmproxy certgen [ARGS...]`
+  Internal certificate helper subcommand that executes Squid's `security_file_certgen` helper logic directly from the main binary.
 - Backward-compatible commands:
   - `lmproxy parse-url URL...`
   - `lmproxy parse-request FILE`
@@ -75,7 +77,36 @@ In addition to the original message parsing and DSL execution commands, `lmproxy
   - `lmproxy --version`
   - `lmproxy --dsl FILE.dslb...`
 
-## 4. Linkage Invariants (Rule 14)
+## 4. Traffic Interception, Reverse Engineering & Swapping
+
+`lmproxy` provides built-in capabilities for inspecting, reverse engineering, and substituting application and server traffic across plain HTTP and intercepted HTTPS:
+
+1. **Embedded In-Process Certgen Helper:**
+   - Squid's dynamic SSL bumping uses an external helper binary protocol (`sslcrtd_program`) to generate host certificates on demand.
+   - `lmproxy` compiles `security_file_certgen.o` directly into the binary with `-Dmain=certgen_main`.
+   - At runtime, `prepare_squid_conf` invokes `sslcrtd_program <lmproxy-binary-path> certgen -s <dbDir> -M 4MB`, pointing to itself.
+   - This eliminates all external helper dependencies, preserving the single self-contained binary architecture (Rule 14).
+
+2. **Live Traffic Tap (`--tap`):**
+   - Logs intercepted client requests, methods, target URLs, HTTP status codes, byte sizes, and round-trip durations directly to `stderr` in real time:
+     ```
+     [INTERCEPT] 127.0.0.1 GET https://api.internal/v1/auth HTTP/1.1 -> 307 (292 bytes, 0 ms)
+     ```
+
+3. **Structured JSONL Recording (`--record <file.jsonl>`):**
+   - Emits structured JSON records for every transited request:
+     ```json
+     {"timestamp":"29/Oct/2026:16:27:22 -0500","client":"127.0.0.1","method":"GET","url":"https://api.internal/v1/auth","status":"307","bytes":292,"duration_ms":0}
+     ```
+
+4. **Transparent Peer Routing (`--route <pattern>=<host:port>`):**
+   - Matches target URLs (regex) or destination domains (`dstdomain`) and transparently routes matched requests to an alternative origin server peer (`cache_peer ... originserver` with `never_direct`).
+
+5. **Dynamic Mock / Redirect Swapping (`--redirect <pattern>=<target_url>`):**
+   - Intercepts requests matching the pattern and immediately returns an HTTP 307 Temporary Redirect to the mock/replacement URL via Squid's `deny_info 307:<target_url>`.
+   - Works seamlessly with both plain HTTP and decrypted HTTPS traffic under `--ssl-bump`.
+
+## 5. Linkage Invariants (Rule 14)
 
 - **Linux:** Only dynamic glibc is permitted (`libc.so.6`, `libm.so.6`, `ld-linux*.so`). All third-party libraries (Squid, OpenSSL, libstdc++, libgcc) must be statically linked.
 - **macOS:** Only system libraries and frameworks (`/usr/lib/*`, `/System/Library/*`) are linked dynamically. OpenSSL and Squid are static.

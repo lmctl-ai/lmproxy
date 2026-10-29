@@ -269,6 +269,130 @@ kill -9 "$INTERCEPT_PID" 2>/dev/null || true
 wait "$INTERCEPT_PID" 2>/dev/null || true
 ok "intercept proxy mode with SSL-bump configuration"
 
+# --- certgen embedded helper ---
+"$HOST" certgen -v | grep -q "security_file_certgen" || fail "certgen helper version print"
+ok "embedded certgen helper responds"
+
+# --- traffic tap, record, route, and redirect test ---
+python3 -c "
+from http.server import HTTPServer, BaseHTTPRequestHandler
+class H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain')
+        self.end_headers()
+        if self.path == '/destination':
+            self.wfile.write(b'SWAPPED_OK\n')
+        elif self.path == '/routed':
+            self.wfile.write(b'ROUTED_OK\n')
+        else:
+            self.wfile.write(b'ORIGINAL_OK\n')
+    def log_message(self, *args): pass
+httpd = HTTPServer(('127.0.0.1', 0), H)
+print(httpd.server_address[1], flush=True)
+httpd.serve_forever()
+" > "$WORK/mock_port.txt" 2>&1 &
+MOCK_PID=$!
+while [ ! -s "$WORK/mock_port.txt" ]; do sleep 0.05; done
+MOCK_PORT="$(cat "$WORK/mock_port.txt")"
+
+PROXY_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')"
+"$HOST" forward --port "$PROXY_PORT" --bind 127.0.0.1 \
+  --tap --record "$WORK/rec.jsonl" \
+  --redirect "/swap=http://127.0.0.1:$MOCK_PORT/destination" \
+  --route "/routed=127.0.0.1:$MOCK_PORT" \
+  >"$WORK/proxy_rules.log" 2>&1 &
+PROXY_PID=$!
+
+for i in {1..50}; do
+  if python3 -c "import socket; s = socket.create_connection(('127.0.0.1', int('$PROXY_PORT')), timeout=0.1); s.close()" 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+
+r_orig="$(curl -s -x "http://127.0.0.1:$PROXY_PORT" "http://127.0.0.1:$MOCK_PORT/orig")"
+[ "$r_orig" = "ORIGINAL_OK" ] || fail "plain pass-through mismatch: $r_orig"
+
+r_swap="$(curl -s -L -x "http://127.0.0.1:$PROXY_PORT" "http://127.0.0.1:$MOCK_PORT/swap")"
+[ "$r_swap" = "SWAPPED_OK" ] || fail "redirect swap mismatch: $r_swap"
+
+r_route="$(curl -s -x "http://127.0.0.1:$PROXY_PORT" "http://non-existent-domain.internal/routed")"
+[ "$r_route" = "ROUTED_OK" ] || fail "backend route mismatch: $r_route"
+
+kill -TERM "$PROXY_PID" 2>/dev/null || true
+kill -TERM "$MOCK_PID" 2>/dev/null || true
+wait "$PROXY_PID" 2>/dev/null || true
+wait "$MOCK_PID" 2>/dev/null || true
+
+[ -s "$WORK/rec.jsonl" ] || fail "empty jsonl recording"
+grep -q '"method":"GET"' "$WORK/rec.jsonl" || fail "missing GET in jsonl record"
+ok "traffic tap, record, route, and redirect in forward proxy mode"
+
+# --- HTTPS SSL-bump end-to-end interception and swap ---
+openssl req -new -newkey rsa:2048 -days 1 -nodes -x509 -keyout "$WORK/testca.key" -out "$WORK/testca.crt" -subj "/CN=LMProxy Test CA" 2>/dev/null
+openssl req -new -newkey rsa:2048 -nodes -keyout "$WORK/server.key" -out "$WORK/server.csr" -subj "/CN=localhost" 2>/dev/null
+openssl x509 -req -in "$WORK/server.csr" -CA "$WORK/testca.crt" -CAkey "$WORK/testca.key" -CAcreateserial -out "$WORK/server.crt" -days 1 2>/dev/null
+
+python3 -c "
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading, ssl
+
+class H(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain')
+        self.end_headers()
+        if self.path == '/destination':
+            self.wfile.write(b'HTTPS_SWAPPED_OK\n')
+        else:
+            self.wfile.write(b'HTTPS_ORIGINAL_OK\n')
+    def log_message(self, *args): pass
+
+http_dest = HTTPServer(('127.0.0.1', 0), H)
+dest_port = http_dest.server_address[1]
+threading.Thread(target=http_dest.serve_forever, daemon=True).start()
+
+https_srv = HTTPServer(('127.0.0.1', 0), H)
+ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ssl_ctx.load_cert_chain('$WORK/server.crt', '$WORK/server.key')
+https_srv.socket = ssl_ctx.wrap_socket(https_srv.socket, server_side=True)
+origin_port = https_srv.server_address[1]
+threading.Thread(target=https_srv.serve_forever, daemon=True).start()
+
+print(f'{dest_port} {origin_port}', flush=True)
+threading.Event().wait()
+" > "$WORK/ssl_ports.txt" 2>&1 &
+SRV_PID=$!
+while [ ! -s "$WORK/ssl_ports.txt" ]; do sleep 0.05; done
+read -r DEST_PORT ORIGIN_PORT < "$WORK/ssl_ports.txt"
+
+HTTPS_PROXY_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); print(s.getsockname()[1]); s.close()')"
+"$HOST" forward --port "$HTTPS_PROXY_PORT" --bind 127.0.0.1 \
+  --ssl-bump --ca-cert "$WORK/testca.crt" --ca-key "$WORK/testca.key" \
+  --redirect "/swap=http://127.0.0.1:$DEST_PORT/destination" \
+  >"$WORK/https_proxy.log" 2>&1 &
+PROXY_PID=$!
+
+for i in {1..50}; do
+  if python3 -c "import socket; s = socket.create_connection(('127.0.0.1', int('$HTTPS_PROXY_PORT')), timeout=0.1); s.close()" 2>/dev/null; then
+    break
+  fi
+  sleep 0.1
+done
+
+r_https_orig="$(curl -s -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://localhost:$ORIGIN_PORT/orig")"
+[ "$r_https_orig" = "HTTPS_ORIGINAL_OK" ] || fail "HTTPS origin passthrough mismatch: $r_https_orig"
+
+r_https_swap="$(curl -s -L -x "http://127.0.0.1:$HTTPS_PROXY_PORT" --cacert "$WORK/testca.crt" "https://localhost:$ORIGIN_PORT/swap")"
+[ "$r_https_swap" = "HTTPS_SWAPPED_OK" ] || fail "HTTPS redirect swap mismatch: $r_https_swap"
+
+kill -TERM "$PROXY_PID" 2>/dev/null || true
+kill -TERM "$SRV_PID" 2>/dev/null || true
+wait "$PROXY_PID" 2>/dev/null || true
+wait "$SRV_PID" 2>/dev/null || true
+ok "HTTPS SSL-bump end-to-end interception and swap with dynamic certificate generation"
+
 case "$UNAME_S" in
   Linux)
     if [ "${LMPROXY_FULL_STATIC:-OFF}" = "ON" ]; then

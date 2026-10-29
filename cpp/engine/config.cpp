@@ -6,6 +6,13 @@
 #include <iostream>
 #include <sstream>
 #include <sys/stat.h>
+#include <unistd.h>
+
+#if defined(__APPLE__)
+#include <mach-o/dyld.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#endif
 
 #include <openssl/bio.h>
 #include <openssl/err.h>
@@ -16,6 +23,28 @@
 #include <openssl/x509v3.h>
 
 namespace lmproxy {
+
+std::string get_self_executable_path() {
+#if defined(__APPLE__)
+  char buf[4096];
+  uint32_t size = sizeof(buf);
+  if (_NSGetExecutablePath(buf, &size) == 0) {
+    return std::string(buf);
+  }
+#elif defined(_WIN32)
+  char buf[4096];
+  DWORD len = GetModuleFileNameA(NULL, buf, sizeof(buf));
+  if (len > 0) return std::string(buf, len);
+#else
+  char buf[4096];
+  ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+  if (len > 0) {
+    buf[len] = '\0';
+    return std::string(buf);
+  }
+#endif
+  return "lmproxy";
+}
 
 bool ensure_ca_certificate(const std::string &certPath, const std::string &keyPath) {
   // Check if both files already exist and are non-empty
@@ -88,6 +117,22 @@ bool ensure_ca_certificate(const std::string &certPath, const std::string &keyPa
   return true;
 }
 
+bool init_ssl_db(const std::string &dbDir) {
+  mkdir(dbDir.c_str(), 0755);
+  std::string certDir = dbDir + "/certs";
+  mkdir(certDir.c_str(), 0755);
+  std::ofstream sizeFile(dbDir + "/size");
+  if (sizeFile) {
+    sizeFile << 0;
+    sizeFile.close();
+  }
+  std::ofstream indexFile(dbDir + "/index.txt");
+  if (indexFile) {
+    indexFile.close();
+  }
+  return true;
+}
+
 std::string prepare_squid_conf(const ProxyConfig &cfg, const std::string &workDir) {
   if (!cfg.customConfigFile.empty()) {
     return cfg.customConfigFile;
@@ -103,28 +148,86 @@ std::string prepare_squid_conf(const ProxyConfig &cfg, const std::string &workDi
 
   // Listener configuration
   if (cfg.sslBump) {
-    std::string cert = cfg.caCertPath.empty() ? (workDir + "/ca.pem") : cfg.caCertPath;
+    std::string cert = cfg.caCertPath.empty() ? (workDir + "/ca.crt") : cfg.caCertPath;
     std::string key = cfg.caKeyPath.empty() ? (workDir + "/ca.key") : cfg.caKeyPath;
     ensure_ca_certificate(cert, key);
+
+    std::string pemPath = workDir + "/ca.pem";
+    std::ofstream pemOut(pemPath);
+    if (pemOut) {
+      std::ifstream fC(cert);
+      pemOut << fC.rdbuf();
+      std::ifstream fK(key);
+      pemOut << fK.rdbuf();
+      pemOut.close();
+    }
+
+    std::string dbDir = workDir + "/ssl_db";
+    init_ssl_db(dbDir);
+
+    std::string exe = get_self_executable_path();
+    if (exe.empty() || exe[0] != '/') {
+      char resolved[4096];
+      if (!cfg.exePath.empty() && realpath(cfg.exePath.c_str(), resolved)) {
+        exe = resolved;
+      }
+    }
+    out << "sslcrtd_program " << exe << " certgen -s " << dbDir << " -M 4MB\n";
 
     if (cfg.mode == "intercept") {
       out << "http_port " << cfg.bindAddress << ":" << cfg.port << " intercept\n";
       out << "https_port " << cfg.bindAddress << ":" << (cfg.port + 1)
-          << " intercept ssl-bump cert=" << cert << " key=" << key
+          << " intercept ssl-bump cert=" << pemPath
           << " generate-host-certificates=on dynamic_cert_mem_cache_size=4MB\n";
     } else {
       out << "http_port " << cfg.bindAddress << ":" << cfg.port
-          << " ssl-bump cert=" << cert << " key=" << key
+          << " ssl-bump cert=" << pemPath
           << " generate-host-certificates=on dynamic_cert_mem_cache_size=4MB\n";
     }
     out << "acl step1 at_step SslBump1\n";
     out << "ssl_bump peek step1\n";
     out << "ssl_bump bump all\n";
+    out << "sslproxy_cert_error allow all\n";
+    out << "tls_outgoing_options flags=DONT_VERIFY_PEER\n";
   } else {
     if (cfg.mode == "intercept") {
       out << "http_port " << cfg.bindAddress << ":" << cfg.port << " intercept\n";
     } else {
       out << "http_port " << cfg.bindAddress << ":" << cfg.port << "\n";
+    }
+  }
+
+  // Traffic swapping rules
+  if (!cfg.rules.empty()) {
+    out << "\n# Traffic swapping / interception rules\n";
+    for (size_t i = 0; i < cfg.rules.size(); ++i) {
+      const auto &rule = cfg.rules[i];
+      std::string aclName = "swap_rule_" + std::to_string(i);
+
+      bool isRegex = (rule.pattern.find('/') != std::string::npos ||
+                      rule.pattern.rfind("^", 0) == 0 ||
+                      rule.pattern.find('*') != std::string::npos);
+      if (isRegex) {
+        out << "acl " << aclName << " url_regex " << rule.pattern << "\n";
+      } else {
+        out << "acl " << aclName << " dstdomain " << rule.pattern << "\n";
+      }
+
+      if (rule.type == ProxyRule::Type::Redirect) {
+        out << "deny_info 307:" << rule.target << " " << aclName << "\n";
+        out << "http_access deny " << aclName << "\n";
+      } else if (rule.type == ProxyRule::Type::Route) {
+        size_t colon = rule.target.find(':');
+        std::string peerHost = (colon != std::string::npos) ? rule.target.substr(0, colon) : rule.target;
+        int peerPort = (colon != std::string::npos) ? std::stoi(rule.target.substr(colon + 1)) : 80;
+        std::string peerName = "peer_" + std::to_string(i);
+
+        out << "cache_peer " << peerHost << " parent " << peerPort
+            << " 0 no-query originserver name=" << peerName << "\n";
+        out << "cache_peer_access " << peerName << " allow " << aclName << "\n";
+        out << "cache_peer_access " << peerName << " deny all\n";
+        out << "never_direct allow " << aclName << "\n";
+      }
     }
   }
 
@@ -159,8 +262,22 @@ std::string prepare_squid_conf(const ProxyConfig &cfg, const std::string &workDi
   out << "coredump_dir " << workDir << "\n";
   out << "visible_hostname lmproxy\n";
   out << "logfile_rotate 0\n";
-  out << "access_log none\n";
   out << "logfile_daemon /bin/true\n";
+
+  // Traffic inspection logging
+  out << "logformat lmproxy_tap [INTERCEPT] %>a %rm %>ru HTTP/%rv -> %>Hs (%<st bytes, %tr ms)\n";
+  out << "logformat lmproxy_json {\"timestamp\":\"%tl\",\"client\":\"%>a\",\"method\":\"%rm\",\"url\":\"%>ru\",\"status\":\"%>Hs\",\"bytes\":%<st,\"duration_ms\":%tr}\n";
+
+  if (cfg.tap) {
+    out << "access_log stdio:/dev/stderr lmproxy_tap\n";
+  }
+  if (!cfg.recordFile.empty()) {
+    out << "access_log stdio:" << cfg.recordFile << " lmproxy_json\n";
+  }
+  if (!cfg.tap && cfg.recordFile.empty()) {
+    out << "access_log none\n";
+  }
+
   if (cfg.debugLevel > 0) {
     out << "debug_options ALL," << cfg.debugLevel << "\n";
     out << "cache_log stdio:/dev/stderr\n";

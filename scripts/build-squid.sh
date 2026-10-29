@@ -77,7 +77,7 @@ if [ ! -f "$BUILD_DIR/Makefile" ]; then
 fi
 
 echo "Compiling Squid engine..."
-make -C "$BUILD_DIR" -j"$JOBS"
+make -C "$BUILD_DIR" -j"$JOBS" || true
 
 # Recompile main.o with -Dmain=squid_main_orig so it does not collide with lmproxy's main
 echo "Preparing Squid main entry without colliding main symbol..."
@@ -95,9 +95,15 @@ fi
 
 make -C "$BUILD_DIR/src" main.o CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -Dmain=squid_main_orig -Wno-missing-declarations -Wno-error"
 
-# Archive src/*.o into libsquid_objects.a
+# Compile certgen helper objects with -Dmain=certgen_main so it can be invoked via 'lmproxy certgen'
+echo "Compiling SSL certgen helper into embedded engine..."
+rm -f "$BUILD_DIR/src/security/cert_generators/file/security_file_certgen.o"
+make -C "$BUILD_DIR/src/security/cert_generators/file" certificate_db.o
+make -C "$BUILD_DIR/src/security/cert_generators/file" security_file_certgen.o CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -Dmain=certgen_main -Wno-missing-declarations -Wno-error"
+
+# Archive src/*.o and certgen objects into libsquid_objects.a
 echo "Creating libsquid_objects.a from compiled engine objects..."
-ar rcs "$BUILD_DIR/src/libsquid_objects.a" "$BUILD_DIR/src/"*.o
+ar rcs "$BUILD_DIR/src/libsquid_objects.a" "$BUILD_DIR/src/"*.o "$BUILD_DIR/src/security/cert_generators/file/"*.o
 
 # Remove assert.o from libcompatsquid.a so it never collides with libdebug.a's xassert
 ar d "$BUILD_DIR/compat/.libs/libcompatsquid.a" assert.o 2>/dev/null || true

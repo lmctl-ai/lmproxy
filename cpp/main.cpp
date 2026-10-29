@@ -15,7 +15,10 @@
 #include <sstream>
 #include <string>
 #include <vector>
-#ifdef _WIN32
+#ifndef _WIN32
+#include <unistd.h>
+#include <getopt.h>
+#else
 #include <io.h>
 #include <fcntl.h>
 #endif
@@ -238,10 +241,14 @@ int main(int argc, char **argv) {
       "       lmproxy parse-url URL [URL ...]\n"
       "       lmproxy parse-request FILE\n"
       "       lmproxy parse-response FILE\n"
-      "       lmproxy forward [--port P] [--bind ADDR] [--ssl-bump]\n"
-      "       lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump]\n"
+      "       lmproxy forward [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]\n"
+      "       lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]\n"
       "       lmproxy run --config FILE\n"
       "       lmproxy --dsl FILE [FILE ...]\n";
+  if (argc >= 2 && std::string(argv[1]) == "certgen") {
+    optind = 1;
+    return lmproxy::certgen_main_entry(argc - 1, argv + 1);
+  }
   if (argc == 2 && std::string(argv[1]) == "--version") {
     std::cout << "lmproxy " LMPROXY_VERSION "\n";
     return std::cout ? 0 : 4;
@@ -287,6 +294,7 @@ int main(int argc, char **argv) {
   if (argc >= 2 && (std::string(argv[1]) == "forward" || std::string(argv[1]) == "intercept" || std::string(argv[1]) == "run")) {
     lmproxy::ProxyConfig cfg;
     cfg.mode = argv[1];
+    cfg.exePath = argv[0];
     if (cfg.mode == "intercept") {
       cfg.port = 3129;
     }
@@ -298,6 +306,26 @@ int main(int argc, char **argv) {
         cfg.bindAddress = argv[++i];
       } else if (arg == "--ssl-bump") {
         cfg.sslBump = true;
+      } else if (arg == "--tap") {
+        cfg.tap = true;
+      } else if (arg == "--record" && i + 1 < argc) {
+        cfg.recordFile = argv[++i];
+      } else if (arg == "--route" && i + 1 < argc) {
+        std::string expr = argv[++i];
+        size_t eq = expr.find('=');
+        if (eq == std::string::npos) {
+          std::cerr << "error: --route requires PATTERN=HOST:PORT\n";
+          return 2;
+        }
+        cfg.rules.push_back({lmproxy::ProxyRule::Type::Route, expr.substr(0, eq), expr.substr(eq + 1)});
+      } else if (arg == "--redirect" && i + 1 < argc) {
+        std::string expr = argv[++i];
+        size_t eq = expr.find('=');
+        if (eq == std::string::npos) {
+          std::cerr << "error: --redirect requires PATTERN=URL\n";
+          return 2;
+        }
+        cfg.rules.push_back({lmproxy::ProxyRule::Type::Redirect, expr.substr(0, eq), expr.substr(eq + 1)});
       } else if (arg == "--ca-cert" && i + 1 < argc) {
         cfg.caCertPath = argv[++i];
       } else if (arg == "--ca-key" && i + 1 < argc) {

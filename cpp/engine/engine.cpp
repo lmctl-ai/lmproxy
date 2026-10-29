@@ -10,10 +10,17 @@
 // Declared in Squid's src/main.cc:
 extern int SquidMain(int argc, char **argv);
 
+// Declared in security_file_certgen.cc:
+extern int certgen_main(int argc, char **argv);
+
 namespace lmproxy {
 
 int squid_main_entry(int argc, char **argv) {
   return SquidMain(argc, argv);
+}
+
+int certgen_main_entry(int argc, char **argv) {
+  return certgen_main(argc, argv);
 }
 
 int run_proxy_engine(const ProxyConfig &cfg) {

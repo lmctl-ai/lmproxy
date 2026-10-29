@@ -14,7 +14,7 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 ## Architecture & Build
 - Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `ee1f084`), Squid 7 proxy engine, and static OpenSSL.
 - Build: `cmake -S . -B build -G Ninja && cmake --build build`.
-- Test: `./test.sh` runs 28 checks (SDK pin, Squid lock, CLI flags, full and `--without-std` signature parity with `lmscript >= 0.2.420`, URL parsing, request/response parsing, DSL bytecode runs, forward proxy routing to upstream, intercept SSL-bump CA generation, and dynamic glibc / system library linkage check).
+- Test: `./test.sh` runs 31 checks (SDK pin, Squid lock, CLI flags, full and `--without-std` signature parity with `lmscript >= 0.2.420`, URL parsing, request/response parsing, DSL bytecode runs, forward proxy routing to upstream, intercept SSL-bump CA generation, certgen embedded helper, live traffic tap/record, route/redirect traffic swapping, HTTPS SSL-bump end-to-end interception and swap, and dynamic glibc / system library linkage check).
 
 ## Adding an example or function
 
