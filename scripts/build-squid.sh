@@ -55,6 +55,15 @@ if [ ! -f "$BUILD_DIR/Makefile" ]; then
     --without-cppunit \
     --without-tdb \
     --without-cap \
+    --without-nettle \
+    --without-gnutls \
+    --without-mit-krb5 \
+    --without-heimdal-krb5 \
+    --without-gss \
+    --without-ldap \
+    --without-sasl \
+    --without-systemd \
+    --without-netfilter-conntrack \
     --disable-external-acl-helpers \
     --disable-url-rewrite-helpers \
     --disable-security-cert-validators \
@@ -78,5 +87,8 @@ make -C "$BUILD_DIR/src" main.o CPPFLAGS="-Dmain=squid_main_orig" CXXFLAGS="${CX
 # Archive src/*.o into libsquid_objects.a
 echo "Creating libsquid_objects.a from compiled engine objects..."
 ar rcs "$BUILD_DIR/src/libsquid_objects.a" "$BUILD_DIR/src/"*.o
+
+# Remove assert.o from libcompatsquid.a so it never collides with libdebug.a's xassert
+ar d "$BUILD_DIR/compat/.libs/libcompatsquid.a" assert.o 2>/dev/null || true
 
 echo "Squid engine successfully built at $BUILD_DIR"

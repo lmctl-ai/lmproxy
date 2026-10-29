@@ -235,7 +235,7 @@ PROXY_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0)); pri
 PROXY_PID=$!
 
 for i in {1..50}; do
-  if (echo > /dev/tcp/127.0.0.1/"$PROXY_PORT") 2>/dev/null; then
+  if python3 -c "import socket; s = socket.create_connection(('127.0.0.1', int('$PROXY_PORT')), timeout=0.1); s.close()" 2>/dev/null; then
     break
   fi
   sleep 0.1
@@ -244,6 +244,9 @@ done
 curl_out="$(curl -s -x "http://127.0.0.1:$PROXY_PORT" "http://127.0.0.1:$UPSTREAM_PORT/" || true)"
 kill -TERM "$PROXY_PID" 2>/dev/null || true
 kill -TERM "$UPSTREAM_PID" 2>/dev/null || true
+sleep 0.5
+kill -9 "$PROXY_PID" 2>/dev/null || true
+kill -9 "$UPSTREAM_PID" 2>/dev/null || true
 wait "$PROXY_PID" 2>/dev/null || true
 wait "$UPSTREAM_PID" 2>/dev/null || true
 
@@ -255,12 +258,14 @@ INTERCEPT_PORT="$(python3 -c 'import socket; s=socket.socket(); s.bind(("", 0));
 "$HOST" intercept --port "$INTERCEPT_PORT" --ssl-bump >"$WORK/intercept.log" 2>&1 &
 INTERCEPT_PID=$!
 for i in {1..50}; do
-  if (echo > /dev/tcp/127.0.0.1/"$INTERCEPT_PORT") 2>/dev/null; then
+  if python3 -c "import socket; s = socket.create_connection(('127.0.0.1', int('$INTERCEPT_PORT')), timeout=0.1); s.close()" 2>/dev/null; then
     break
   fi
   sleep 0.1
 done
 kill -TERM "$INTERCEPT_PID" 2>/dev/null || true
+sleep 0.5
+kill -9 "$INTERCEPT_PID" 2>/dev/null || true
 wait "$INTERCEPT_PID" 2>/dev/null || true
 ok "intercept proxy mode with SSL-bump configuration"
 

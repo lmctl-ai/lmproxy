@@ -14,6 +14,9 @@ set(LMPROXY_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.host.json")
 # ---- OpenSSL (Static) -------------------------------------------------------
 set(OPENSSL_USE_STATIC_LIBS TRUE)
 find_package(OpenSSL REQUIRED)
+if(NOT OPENSSL_ROOT_DIR AND DEFINED OPENSSL_INCLUDE_DIR)
+  get_filename_component(OPENSSL_ROOT_DIR "${OPENSSL_INCLUDE_DIR}/.." ABSOLUTE)
+endif()
 
 # ---- Full Squid Engine (Static Convenience Libraries) -----------------------
 set(SQUID_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/squid")
@@ -23,12 +26,12 @@ set(SQUID_ENGINE_LIB "${SQUID_BUILD_DIR}/src/libsquid_objects.a")
 # Ensure the embedded Squid engine static libraries are configured and compiled
 message(STATUS "Configuring and building embedded Squid engine...")
 execute_process(
-  COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-squid.sh"
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  ENVIRONMENT
+  COMMAND "${CMAKE_COMMAND}" -E env
     "BUILD_DIR=${SQUID_BUILD_DIR}"
     "SOURCE_DIR=${SQUID_ROOT}"
     "OPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scripts/build-squid.sh"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   RESULT_VARIABLE SQUID_BUILD_RESULT
 )
 if(NOT SQUID_BUILD_RESULT EQUAL 0)
@@ -87,7 +90,7 @@ endforeach()
 
 if(APPLE)
   target_link_libraries(lmproxy PRIVATE
-    -Wl,-force_load,"${SQUID_ENGINE_LIB}"
+    "-Wl,-force_load,${SQUID_ENGINE_LIB}"
     ${SQUID_STATIC_LIBS}
     "${SQUID_BUILD_DIR}/compat/.libs/libcompatsquid.a"
     OpenSSL::SSL
