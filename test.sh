@@ -278,15 +278,18 @@ python3 -c "
 from http.server import HTTPServer, BaseHTTPRequestHandler
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == '/destination':
+            body = b'SWAPPED_OK\n'
+        elif self.path == '/routed':
+            body = b'ROUTED_OK\n'
+        else:
+            body = b'ORIGINAL_OK\n'
         self.send_response(200)
         self.send_header('Content-Type', 'text/plain')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Connection', 'close')
         self.end_headers()
-        if self.path == '/destination':
-            self.wfile.write(b'SWAPPED_OK\n')
-        elif self.path == '/routed':
-            self.wfile.write(b'ROUTED_OK\n')
-        else:
-            self.wfile.write(b'ORIGINAL_OK\n')
+        self.wfile.write(body)
     def log_message(self, *args): pass
 httpd = HTTPServer(('127.0.0.1', 0), H)
 print(httpd.server_address[1], flush=True)
@@ -340,13 +343,13 @@ import threading, ssl
 
 class H(BaseHTTPRequestHandler):
     def do_GET(self):
+        body = b'HTTPS_SWAPPED_OK\n' if self.path == '/destination' else b'HTTPS_ORIGINAL_OK\n'
         self.send_response(200)
         self.send_header('Content-Type', 'text/plain')
+        self.send_header('Content-Length', str(len(body)))
+        self.send_header('Connection', 'close')
         self.end_headers()
-        if self.path == '/destination':
-            self.wfile.write(b'HTTPS_SWAPPED_OK\n')
-        else:
-            self.wfile.write(b'HTTPS_ORIGINAL_OK\n')
+        self.wfile.write(body)
     def log_message(self, *args): pass
 
 http_dest = HTTPServer(('127.0.0.1', 0), H)

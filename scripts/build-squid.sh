@@ -97,9 +97,24 @@ make -C "$BUILD_DIR/src" main.o CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -Dmain=s
 
 # Compile certgen helper objects with -Dmain=certgen_main so it can be invoked via 'lmproxy certgen'
 echo "Compiling SSL certgen helper into embedded engine..."
-rm -f "$BUILD_DIR/src/security/cert_generators/file/security_file_certgen.o"
-make -C "$BUILD_DIR/src/security/cert_generators/file" certificate_db.o
-make -C "$BUILD_DIR/src/security/cert_generators/file" security_file_certgen.o CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -Dmain=certgen_main -Wno-missing-declarations -Wno-error"
+cat << 'EOF' > "$BUILD_DIR/src/security/cert_generators/file/certgen_compat.h"
+#pragma once
+#include "squid.h"
+#include <openssl/asn1.h>
+#include <openssl/x509.h>
+#include "ssl/gadgets.h"
+namespace Ssl {
+inline UniqueCString OneLineSummary(const X509_NAME &name) {
+    return OneLineSummary(const_cast<X509_NAME&>(name));
+}
+}
+EOF
+
+rm -f "$BUILD_DIR/src/security/cert_generators/file/certificate_db.o" "$BUILD_DIR/src/security/cert_generators/file/security_file_certgen.o"
+make -C "$BUILD_DIR/src/security/cert_generators/file" certificate_db.o \
+  CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -include certgen_compat.h -Wno-missing-declarations -Wno-error"
+make -C "$BUILD_DIR/src/security/cert_generators/file" security_file_certgen.o \
+  CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -include certgen_compat.h -Dmain=certgen_main -Wno-missing-declarations -Wno-error"
 
 # Archive src/*.o and certgen objects into libsquid_objects.a
 echo "Creating libsquid_objects.a from compiled engine objects..."
