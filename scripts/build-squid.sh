@@ -82,7 +82,18 @@ make -C "$BUILD_DIR" -j"$JOBS"
 # Recompile main.o with -Dmain=squid_main_orig so it does not collide with lmproxy's main
 echo "Preparing Squid main entry without colliding main symbol..."
 rm -f "$BUILD_DIR/src/main.o"
-make -C "$BUILD_DIR/src" main.o CPPFLAGS="-Dmain=squid_main_orig" CXXFLAGS="${CXXFLAGS:- -O2 -g} -Wno-missing-declarations -Wno-error"
+
+SSL_INC=""
+if [ -n "${OPENSSL_ROOT_DIR:-}" ] && [ -d "${OPENSSL_ROOT_DIR}/include" ]; then
+  SSL_INC="-I${OPENSSL_ROOT_DIR}/include"
+elif [ "$(uname -s)" = "Darwin" ]; then
+  BREW_OPENSSL="$(brew --prefix openssl@3 2>/dev/null || echo "")"
+  if [ -n "$BREW_OPENSSL" ] && [ -d "$BREW_OPENSSL/include" ]; then
+    SSL_INC="-I$BREW_OPENSSL/include"
+  fi
+fi
+
+make -C "$BUILD_DIR/src" main.o CXXFLAGS="${CXXFLAGS:- -O2 -g} $SSL_INC -Dmain=squid_main_orig -Wno-missing-declarations -Wno-error"
 
 # Archive src/*.o into libsquid_objects.a
 echo "Creating libsquid_objects.a from compiled engine objects..."
