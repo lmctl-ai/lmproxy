@@ -7,5 +7,6 @@
 # Editor/OS noise
 *.swp
 .DS_Store
+*.lmc
 
 /schema/lmproxy.dsl.json

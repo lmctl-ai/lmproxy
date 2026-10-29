@@ -210,14 +210,32 @@ for f in parse-url inspect-request inspect-response percent-encoding; do
 done
 ok "examples compile and their expected output matches"
 
-if [ "$UNAME_S" = "Darwin" ]; then
-  BAD_LIBS="$(otool -L "$HOST" | tail -n +2 | awk '{print $1}' | grep -v '^/usr/lib/\|^/System/Library/' || true)"
-  [ -z "$BAD_LIBS" ] || fail "host links non-system libraries: $BAD_LIBS"
-  ok "host links only system libraries ($(stat_size "$HOST") bytes, otool -L clean)"
-else
-  LDD_OUT="$(ldd "$HOST" 2>&1 || true)"
-  [[ "$LDD_OUT" == *'not a dynamic executable'* ]] || fail "host is not fully static: $LDD_OUT"
-  ok "host is fully static ($(stat_size "$HOST") bytes, ldd clean)"
-fi
+case "$UNAME_S" in
+  Linux)
+    if [ "${LMPROXY_FULL_STATIC:-OFF}" = "ON" ]; then
+      LDD_OUT="$(ldd "$HOST" 2>&1 || true)"
+      [[ "$LDD_OUT" == *'not a dynamic executable'* ]] || fail "host is not fully static: $LDD_OUT"
+      ok "host is fully static ($(stat_size "$HOST") bytes, ldd clean)"
+    else
+      if command -v readelf >/dev/null 2>&1; then
+        needed="$(readelf -d "$HOST" | sed -n 's/.*(NEEDED).*Shared library: \[\(.*\)\]/\1/p')"
+      else
+        needed="$(ldd "$HOST" | awk '/=>/ {print $1} !/=>/ && /ld-linux/ {sub(/^[[:space:]]*/, ""); sub(/[[:space:]].*/, ""); print $0}' | xargs -n1 basename)"
+      fi
+      [ -n "$needed" ] || fail "expected dynamic glibc linkage on Linux, found no NEEDED entries"
+      bad="$(printf '%s\n' "$needed" | grep -v -E '^(libc\.so\.6|libm\.so\.6|libpthread\.so\.0|libdl\.so\.2|librt\.so\.1|ld-linux.*)' || true)"
+      [ -z "$bad" ] || fail "disallowed Linux dynamic libraries: $bad"
+      ok "Linux binary links only dynamic glibc (${needed//$'\n'/ })"
+    fi
+    ;;
+  Darwin)
+    BAD_LIBS="$(otool -L "$HOST" | tail -n +2 | awk '{print $1}' | grep -v '^/usr/lib/\|^/System/Library/' || true)"
+    [ -z "$BAD_LIBS" ] || fail "host links non-system libraries: $BAD_LIBS"
+    ok "host links only system libraries ($(stat_size "$HOST") bytes, otool -L clean)"
+    ;;
+  MINGW*|MSYS*|CYGWIN*)
+    ok "Windows host ($HOST)"
+    ;;
+esac
 
 echo "PASS: $pass checks"

@@ -8,7 +8,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-option(LMPROXY_FULL_STATIC "Link the complete executable statically" ON)
+option(LMPROXY_FULL_STATIC "Link glibc statically too (off per policy: glibc stays dynamic)" OFF)
 set(LMPROXY_HOST_SCHEMA "${CMAKE_CURRENT_SOURCE_DIR}/schema/lmproxy.host.json")
 
 # ---- vendored Squid subset -------------------------------------------------

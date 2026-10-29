@@ -40,8 +40,9 @@ cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Produces `build/lmproxy`: one statically linked executable (`ldd` reports
-"not a dynamic executable" on Linux; macOS links only system libraries).
+Produces `build/lmproxy`: one standalone executable (Linux links all dependencies
+statically and only the system glibc dynamically, glibc >= 2.35, Ubuntu 22.04 or
+newer; macOS links only system libraries).
 
 ## CLI
 
