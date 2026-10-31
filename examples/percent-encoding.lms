@@ -1,6 +1,6 @@
 # Chapter: Basics - percent-encoding
 # Shows: proxy.percent_decode/percent_encode round-trip, Url.path on escaped input
-# Run: lmscript examples/percent-encoding.lms      (then: lmproxy --dsl build/percent-encoding.dslb)
+# Run: lmscript examples/percent-encoding.lms      (then: lmproxy --lmcode build/percent-encoding.dslb)
 # Needs: nothing (offline).
 # exit: 0
 # expect:

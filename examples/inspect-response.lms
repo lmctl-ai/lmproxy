@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP response
 # Shows: proxy.parse_response, Message.status/reason, header defaults, Url flags
-# Run: lmscript examples/inspect-response.lms      (then: lmproxy --dsl build/inspect-response.dslb)
+# Run: lmscript examples/inspect-response.lms      (then: lmproxy --lmcode build/inspect-response.dslb)
 # Needs: nothing (offline).
 # exit: 0
 # expect:

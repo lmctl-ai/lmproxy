@@ -5,7 +5,7 @@ runs against the `lmproxy` host:
 
 ```sh
 lmscript examples/parse-url.lms build/parse-url.dslb
-lmproxy --dsl build/parse-url.dslb
+lmproxy --lmcode build/parse-url.dslb
 ```
 
 The `install="github:lmctl-ai/lmproxy@latest"` line in each script pins the

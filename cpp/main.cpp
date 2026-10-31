@@ -237,14 +237,14 @@ int main(int argc, char **argv) {
   dslvm::Registry reg;
   register_host(reg, host);
   const std::string usage =
-      "usage: lmproxy --version | --dsl-schema [--json] | --dsl-signatures\n"
+      "usage: lmproxy --version | --lmcode-schema [--json] | --lmcode-signatures\n"
       "       lmproxy parse-url URL [URL ...]\n"
       "       lmproxy parse-request FILE\n"
       "       lmproxy parse-response FILE\n"
       "       lmproxy forward [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]\n"
       "       lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]\n"
       "       lmproxy run --config FILE\n"
-      "       lmproxy --dsl FILE [FILE ...]\n";
+      "       lmproxy --lmcode FILE [FILE ...]\n";
   if (argc >= 2 && std::string(argv[1]) == "certgen") {
     optind = 1;
     return lmproxy::certgen_main_entry(argc - 1, argv + 1);
@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
     std::cout << "lmproxy " LMPROXY_VERSION "\n";
     return std::cout ? 0 : 4;
   }
-  if (argc >= 2 && std::string(argv[1]) == "--dsl-schema") {
+  if (argc >= 2 && std::string(argv[1]) == "--lmcode-schema") {
     if (argc == 2) {
       print_schema_summary(reg);
       return std::cout ? 0 : 4;
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
     std::cerr << usage;
     return 2;
   }
-  if (argc == 2 && std::string(argv[1]) == "--dsl-signatures") {
+  if (argc == 2 && std::string(argv[1]) == "--lmcode-signatures") {
     for (const auto &signature : reg.signatures()) std::cout << signature << "\n";
     return 0;
   }
@@ -341,7 +341,7 @@ int main(int argc, char **argv) {
     }
     return lmproxy::run_proxy_engine(cfg);
   }
-  if (argc >= 3 && std::string(argv[1]) == "--dsl") {
+  if (argc >= 3 && std::string(argv[1]) == "--lmcode") {
     for (int i = 2; i < argc; ++i) {
       if (std::string(argv[i]).empty() || std::string(argv[i]).rfind("--", 0) == 0) {
         std::cerr << usage;

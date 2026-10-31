@@ -1,4 +1,4 @@
-$ lmproxy --version && lmproxy --dsl-signatures | head -n 14
+$ lmproxy --version && lmproxy --lmcode-signatures | head -n 14
 lmproxy 0.1.0
 context proxy: Proxy
 fn float_list() -> FloatList

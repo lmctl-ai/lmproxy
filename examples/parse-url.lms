@@ -1,7 +1,7 @@
 # Chapter: Basics - parse a URL
 # Shows: proxy.parse_url, Url.scheme/host/port/path/userinfo/has_port, string concat
 # Run: lmscript examples/parse-url.lms      (or: lmctl script examples/parse-url.lms)
-# Needs: nothing (offline). Run the bytecode with: lmproxy --dsl build/parse-url.dslb
+# Needs: nothing (offline). Run the bytecode with: lmproxy --lmcode build/parse-url.dslb
 # exit: 0
 # expect:
 #|http://user@example.com:8080/docs/index.html?lang=en

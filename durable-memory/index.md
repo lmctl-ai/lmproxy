@@ -20,7 +20,7 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 
 ### Adding an example
 1. Create `examples/<name>.lms` using `_dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest"`.
-2. Compile and run: `PATH=$PWD/build:$PATH lmscript examples/<name>.lms build/<name>.dslb && ./build/lmproxy --dsl build/<name>.dslb`.
+2. Compile and run: `PATH=$PWD/build:$PATH lmscript examples/<name>.lms build/<name>.dslb && ./build/lmproxy --lmcode build/<name>.dslb`.
 3. Add expected output assertions (`#| <expected>`) in `examples/<name>.lms` for `./test.sh`.
 4. Capture output to `docs/images/src/<name>.txt`, run `scripts/render-readme-images.sh`, and update `README.md` gallery.
 

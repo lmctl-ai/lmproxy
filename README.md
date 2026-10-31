@@ -24,7 +24,7 @@ lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/i
 | **Percent-encoding** | **CLI parse-url JSON** | **lmproxy CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/percent-encoding.png" width="290"> | <img src="docs/images/cli-parse-url.png" width="290"> | <img src="docs/images/lmproxy-cli.png" width="290"> |
-| Percent-decode and re-encode URL path components.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed DSL signatures.<br>`lmproxy --version && lmproxy --dsl-signatures` |
+| Percent-decode and re-encode URL path components.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed DSL signatures.<br>`lmproxy --version && lmproxy --lmcode-signatures` |
 
 ## Build
 
@@ -42,8 +42,8 @@ newer; macOS links only system libraries).
 
 ```
 lmproxy --version
-lmproxy --dsl-schema [--json]
-lmproxy --dsl-signatures
+lmproxy --lmcode-schema [--json]
+lmproxy --lmcode-signatures
 lmproxy parse-url URL...
 lmproxy parse-request FILE   # HTTP/1.x request message
 lmproxy parse-response FILE  # HTTP/1.x response message
@@ -51,7 +51,7 @@ lmproxy forward [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [-
 lmproxy intercept [--port P] [--bind ADDR] [--ssl-bump] [--tap] [--record FILE] [--route P=B] [--redirect P=U]
 lmproxy run --config FILE
 lmproxy certgen [ARGS...]
-lmproxy --dsl FILE [FILE ...]
+lmproxy --lmcode FILE [FILE ...]
 ```
 
 ### Reverse Engineering & Traffic Swapping
@@ -62,7 +62,7 @@ lmproxy --dsl FILE [FILE ...]
 - `--redirect PATTERN=URL`: Intercept matching requests and swap responses with an HTTP 307 redirect.
 - `--ssl-bump`: Decrypt and inspect HTTPS traffic using an embedded, on-the-fly certificate generator helper.
 
-The `parse-*` commands are the simple entry points; the `--dsl` interface
+The `parse-*` commands are the simple entry points; the `--lmcode` interface
 runs lmscript bytecode against the same engine with structured access to
 parsed objects.
 

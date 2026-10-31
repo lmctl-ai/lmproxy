@@ -26,6 +26,7 @@ cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release >"$WORK/cmake.log
 cmake --build "$BUILD_DIR" -j2 >"$WORK/build.log" 2>&1 ||
   { grep -n -B 3 -A 4 "error:" "$WORK/build.log" >&2 || true; tail -30 "$WORK/build.log" >&2; fail "cmake build ($BUILD_DIR)"; }
 ok "host build ($BUILD_DIR)"
+python3 tests/check-host-flags.py schema/lmproxy.dsl.json "$HOST" || fail "hard host flag cutover"
 
 want_version="lmproxy $(sed -n 's/^project(lmproxy VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
 [ "$("$HOST" --version)" = "$want_version" ] || fail "--version prints $want_version"
@@ -33,14 +34,14 @@ set +e; "$HOST" --version extra >/dev/null 2>&1; code=$?; set -e
 [ "$code" = 2 ] || fail "--version with an extra argument exits 2 (got $code)"
 ok "--version prints exactly '$want_version'"
 
-"$HOST" --dsl-schema --json >"$WORK/embedded-schema.json" || fail "embedded schema print"
+"$HOST" --lmcode-schema --json >"$WORK/embedded-schema.json" || fail "embedded schema print"
 cmp schema/lmproxy.dsl.json "$WORK/embedded-schema.json" || fail "embedded schema differs from source bytes"
-ok "--dsl-schema --json prints byte-identical embedded schema bytes"
-"$HOST" --dsl-schema >"$WORK/schema-summary.txt" || fail "schema summary print"
+ok "--lmcode-schema --json prints byte-identical embedded schema bytes"
+"$HOST" --lmcode-schema >"$WORK/schema-summary.txt" || fail "schema summary print"
 python3 - "$WORK/schema-summary.txt" <<'PY'
 import re,subprocess,sys
 summary=open(sys.argv[1]).read()
-sigs=subprocess.run(['build/lmproxy','--dsl-signatures'],capture_output=True,text=True).stdout.splitlines()
+sigs=subprocess.run(['build/lmproxy','--lmcode-signatures'],capture_output=True,text=True).stdout.splitlines()
 missing=[]
 for line in sigs:
   if line.startswith('method '): needle=line[7:]
@@ -49,25 +50,25 @@ for line in sigs:
   else: needle=line
   if needle not in summary: missing.append(needle)
 assert not missing, missing
-print('all', len(sigs), 'registry members listed in --dsl-schema summary')
+print('all', len(sigs), 'registry members listed in --lmcode-schema summary')
 PY
-ok "--dsl-schema summary lists every registry member"
-diff -u <("$LMSCRIPT" --dsl-signatures schema/lmproxy.dsl.json) <("$HOST" --dsl-signatures) || fail "host/compiler signatures differ"
+ok "--lmcode-schema summary lists every registry member"
+diff -u <("$LMSCRIPT" --lmcode-signatures schema/lmproxy.dsl.json) <("$HOST" --lmcode-signatures) || fail "host/compiler signatures differ"
 cmp schema/lmproxy.host.json schema/lmproxy.dsl.json || fail "generated schema differs from host-only input"
 python3 scripts/merge-std.py --host-only schema/lmproxy.dsl.json "$WORK/host-only-schema.json"
 cmp schema/lmproxy.dsl.json "$WORK/host-only-schema.json" || fail "embedded schema still declares standard members"
-"$HOST" --dsl-signatures >"$WORK/registry-signatures.txt"
-"$LMSCRIPT" --dsl-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
+"$HOST" --lmcode-signatures >"$WORK/registry-signatures.txt"
+"$LMSCRIPT" --lmcode-signatures cpp/std/lmcode-std.schema.json >"$WORK/standard-signatures.txt"
 python3 - "$WORK" <<'PYHOST'
 from pathlib import Path
 import sys
 work=Path(sys.argv[1])
 registry=set((work/'registry-signatures.txt').read_text().splitlines())
 standard=set((work/'standard-signatures.txt').read_text().splitlines())
-assert len(standard)==72, len(standard)
+assert len(standard)==206, len(standard)
 (work/'host-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
 PYHOST
-diff -u <("$LMSCRIPT" --dsl-signatures schema/lmproxy.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
+diff -u <("$LMSCRIPT" --lmcode-signatures schema/lmproxy.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
 ok "typed registry signatures match compiler schema signatures (full and --without-std)"
 
 # --- parse-url ---
@@ -121,7 +122,7 @@ ok "parse-request missing file refused (exit 3)"
 
 # --- percent encoding ---
 out="$("$HOST" parse-url 'http://h/x%20y')" # warm path only
-"$HOST" --dsl-signatures >/dev/null
+"$HOST" --lmcode-signatures >/dev/null
 ok "signatures stable after subcommand runs"
 
 # --- DSL bytecode ---
@@ -137,8 +138,8 @@ end _dsl_
 savedsl(p, "$WORK/smoke.dslb");
 EOF
 "$LMSCRIPT" "$WORK/smoke.lms" "$WORK/smoke.dslb" >/dev/null || fail "smoke compile"
-[ "$(od -An -t u1 -j 5 -N 1 "$WORK/smoke.dslb" | tr -d ' ')" = 5 ] || fail "smoke was not compiled as bytecode v5"
-out="$("$HOST" --dsl "$WORK/smoke.dslb")"
+[ "$(od -An -t u1 -j 5 -N 1 "$WORK/smoke.dslb" | tr -d ' ')" = 6 ] || fail "smoke was not compiled as bytecode v6"
+out="$("$HOST" --lmcode "$WORK/smoke.dslb")"
 [ "$(tail -1 <<<"$out")" = '{"ok": true, "result": null}' ] || fail "smoke run: $out"
 grep -q '^example.com:8080/x?y=1$' <<<"$out" || fail "smoke url line: $out"
 grep -q '^GET /a HTTP/1.1 host=example.com$' <<<"$out" || fail "smoke request line: $out"
@@ -163,7 +164,7 @@ end _dsl_
 savedsl(p, "$WORK/bad-usage.dslb");
 EOF
 "$LMSCRIPT" "$WORK/bad-usage.lms" "$WORK/bad-usage.dslb" >/dev/null || fail "bad-usage compile"
-out="$("$HOST" --dsl "$WORK/bad-usage.dslb")"
+out="$("$HOST" --lmcode "$WORK/bad-usage.dslb")"
 grep -q '^done$' <<<"$out" || fail "StrList/percent/flags/file_* checks failed: $out"
 ok "StrList.at/len, Url flags, percent_decode, and std file_* behave"
 
@@ -183,18 +184,18 @@ end _dsl_
 savedsl(p, "$WORK/oob2.dslb");
 EOF
 "$LMSCRIPT" "$WORK/oob2.lms" "$WORK/oob2.dslb" >/dev/null || fail "compile"
-set +e; out="$("$HOST" --dsl "$WORK/oob2.dslb" 2>&1)"; code=$?; set -e
+set +e; out="$("$HOST" --lmcode "$WORK/oob2.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'out of range'* ]] || fail "StrList.at bounds (exit $code): $out"
 ok "type mismatch refused at compile (exit 2), StrList.at bounds refused at runtime (exit 3)"
 
 set +e; out="$("$HOST" 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmproxy'* ]] || fail "bad args refusal (exit $code): $out"
 ok "bad arguments refused (exit 2)"
-set +e; out="$("$HOST" --dsl "$WORK/no-such.dslb" 2>&1)"; code=$?; set -e
+set +e; out="$("$HOST" --lmcode "$WORK/no-such.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'"phase": "load"'* ]] || fail "missing bytecode refusal (exit $code): $out"
 ok "missing bytecode file refused at load (exit 3)"
 
-"$HOST" --dsl "$WORK/smoke.dslb" "$WORK/bad-usage.dslb" >"$WORK/multi.jsonl" || fail "multi-bytecode run"
+"$HOST" --lmcode "$WORK/smoke.dslb" "$WORK/bad-usage.dslb" >"$WORK/multi.jsonl" || fail "multi-bytecode run"
 [ "$(grep -c '^{"ok": true, "result": null}$' "$WORK/multi.jsonl")" = 2 ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially"
 
@@ -202,7 +203,7 @@ ok "multiple bytecode files run sequentially"
 mkdir -p build
 for f in parse-url inspect-request inspect-response percent-encoding; do
   "$LMSCRIPT" "examples/$f.lms" "build/$f.dslb" >"$WORK/$f.compile.log" 2>&1 || fail "$f example compile"
-  "$HOST" --dsl "build/$f.dslb" >"$WORK/$f.out" || fail "$f example run"
+  "$HOST" --lmcode "build/$f.dslb" >"$WORK/$f.out" || fail "$f example run"
   # every '# expect:' line must appear in the program output
   while IFS= read -r line; do
     grep -qxF "${line:2}" "$WORK/$f.out" || fail "$f example output missing: ${line:2} (got $(cat "$WORK/$f.out"))"

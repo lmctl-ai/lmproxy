@@ -72,10 +72,10 @@ In addition to the original message parsing and DSL execution commands, `lmproxy
   - `lmproxy parse-url URL...`
   - `lmproxy parse-request FILE`
   - `lmproxy parse-response FILE`
-  - `lmproxy --dsl-schema [--json]`
-  - `lmproxy --dsl-signatures`
+  - `lmproxy --lmcode-schema [--json]`
+  - `lmproxy --lmcode-signatures`
   - `lmproxy --version`
-  - `lmproxy --dsl FILE.dslb...`
+  - `lmproxy --lmcode FILE.dslb...`
 
 ## 4. Traffic Interception, Reverse Engineering & Swapping
 

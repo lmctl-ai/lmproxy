@@ -1,4 +1,4 @@
-$ lmscript examples/parse-url.lms build/parse-url.dslb && lmproxy --dsl build/parse-url.dslb
+$ lmscript examples/parse-url.lms build/parse-url.dslb && lmproxy --lmcode build/parse-url.dslb
 http://user@example.com:8080/docs/index.html?lang=en
   scheme : http
   host   : example.com

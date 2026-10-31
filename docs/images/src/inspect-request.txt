@@ -1,4 +1,4 @@
-$ lmscript examples/inspect-request.lms build/inspect-request.dslb && lmproxy --dsl build/inspect-request.dslb
+$ lmscript examples/inspect-request.lms build/inspect-request.dslb && lmproxy --lmcode build/inspect-request.dslb
 GET /index.html HTTP/1.1
 host -> example.com
 accept -> */*

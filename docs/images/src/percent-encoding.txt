@@ -1,4 +1,4 @@
-$ lmscript examples/percent-encoding.lms build/percent-encoding.dslb && lmproxy --dsl build/percent-encoding.dslb
+$ lmscript examples/percent-encoding.lms build/percent-encoding.dslb && lmproxy --lmcode build/percent-encoding.dslb
 raw     : /my%20dir/report%231.pdf
 decoded : /my dir/report#1.pdf
 encoded : /my%20dir/report%231.pdf

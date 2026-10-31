@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP request
 # Shows: proxy.parse_request, Message.method/target/version/header/header_names
-# Run: lmscript examples/inspect-request.lms      (then: lmproxy --dsl build/inspect-request.dslb)
+# Run: lmscript examples/inspect-request.lms      (then: lmproxy --lmcode build/inspect-request.dslb)
 # Needs: nothing (offline); the raw request is embedded below.
 # exit: 0
 # expect:
