@@ -34,7 +34,7 @@ cmake --build "$BUILD_DIR" -j2 >"$WORK/build.log" 2>&1 ||
 ok "host build ($BUILD_DIR)"
 python3 tests/check-host-flags.py schema/lmproxy.dsl.json "$HOST" || fail "hard host flag cutover"
 
-want_version="lmproxy $(sed -n 's/^project(lmproxy VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+want_version="lmproxy $(cat VERSION)"
 [ "$("$HOST" --version)" = "$want_version" ] || fail "--version prints $want_version"
 set +e; "$HOST" --version extra >/dev/null 2>&1; code=$?; set -e
 [ "$code" = 2 ] || fail "--version with an extra argument exits 2 (got $code)"
