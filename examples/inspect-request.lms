@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP request
 # Shows: proxy.parse_request, Message.method/target/version/header/header_names
-# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-request.lms tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb
+# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-request.lms tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb
 # Needs: nothing (offline); the raw request is embedded below.
 # exit: 0
 # expect:

@@ -17,21 +17,21 @@
     {
       "name": "inspect-request",
       "source": "examples/inspect-request.lms",
-      "source_sha256": "dbd03088e6ff328618b713e03e7e6e8c54bec26ad0d6e36093ad6e4f131b9b75",
+      "source_sha256": "55e21157e0e60ee3631f06b8cdf9dd4a251ee12ade56d9186e5aba50f65b1f07",
       "bytecode": "tests/fixtures/lmcode/inspect-request.dslb",
       "bytecode_sha256": "0195eb1127c14656041350f1d093e10feef962926db967d4a8ea648848724a04"
     },
     {
       "name": "inspect-response",
       "source": "examples/inspect-response.lms",
-      "source_sha256": "c8142b2b66d06ba143c93eb87651ccd43f40c0a16f6ace586efaf687b95c0ee5",
+      "source_sha256": "e3fdde98c2d5bf78f3f14e3f5c1fecfb2bc0af920ee6722a04cf445858c7a0ce",
       "bytecode": "tests/fixtures/lmcode/inspect-response.dslb",
       "bytecode_sha256": "885f816a65f12a2289501ec67a40a32e4d89521e0c7a6c5d8228123df4f2e6de"
     },
     {
       "name": "percent-encoding",
       "source": "examples/percent-encoding.lms",
-      "source_sha256": "888338481dae86f87fc7953592bc7b4eda94b5104d1afeac552df2b485c62164",
+      "source_sha256": "f3f28cbe56209f1c648951efdc608c154481aacbac3882be61a0d202900094f2",
       "bytecode": "tests/fixtures/lmcode/percent-encoding.dslb",
       "bytecode_sha256": "711bc23515b07a5ef3cb265ec7e4d55588fcfcc77a4806a2df5c3296063cd5be"
     },

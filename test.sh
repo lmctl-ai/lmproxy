@@ -11,6 +11,7 @@ case "$UNAME_S" in MINGW*|MSYS*|CYGWIN*) HOST="$HOST.exe";; esac
 stat_size(){ stat -c %s "$1" 2>/dev/null || stat -f%z "$1"; }
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/lmproxy-test-XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
+python3 scripts/check-example-commands.py
 pass=0
 ok(){ pass=$((pass+1)); echo "ok $pass - $1"; }
 fail(){ echo "FAIL: $*" >&2; exit 1; }

@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP response
 # Shows: proxy.parse_response, Message.status/reason, header defaults, Url flags
-# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-response.lms tests/fixtures/lmcode/inspect-response.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb
+# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-response.lms tests/fixtures/lmcode/inspect-response.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb
 # Needs: nothing (offline).
 # exit: 0
 # expect:
