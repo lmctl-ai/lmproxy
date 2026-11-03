@@ -125,91 +125,44 @@ out="$("$HOST" parse-url 'http://h/x%20y')" # warm path only
 "$HOST" --lmcode-signatures >/dev/null
 ok "signatures stable after subcommand runs"
 
-# --- DSL bytecode ---
-cat > "$WORK/smoke.lms" <<EOF
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
-let u = proxy.parse_url("http://example.com:8080/x?y=1");
-println(u.host() + ":" + str(u.port()) + u.path());
-let m = proxy.parse_request("GET /a HTTP/1.1\r\nHost: example.com\r\n\r\n");
-println(m.method() + " " + m.target() + " " + m.version() + " host=" + m.header("host"));
-let r = proxy.parse_response("HTTP/1.1 200 OK\r\nServer: squid\r\n\r\n");
-println(str(r.status()) + " " + r.reason() + " server=" + r.header("SERVER"));
-end _dsl_
-savedsl(p, "$WORK/smoke.dslb");
-EOF
-"$LMSCRIPT" "$WORK/smoke.lms" "$WORK/smoke.dslb" >/dev/null || fail "smoke compile"
-[ "$(od -An -t u1 -j 5 -N 1 "$WORK/smoke.dslb" | tr -d ' ')" = 6 ] || fail "smoke was not compiled as bytecode v6"
-out="$("$HOST" --lmcode "$WORK/smoke.dslb")"
+# --- lmcode sources and pinned bytecode fixtures ---
+python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json || fail "lmcode fixture pins differ"
+for source in examples/*.lms tests/fixtures/lmcode/smoke.lms tests/fixtures/lmcode/bad-usage.lms tests/fixtures/lmcode/oob2.lms; do
+  "$LMSCRIPT" --check "$source" >"$WORK/check.out" 2>"$WORK/check.err" || { cat "$WORK/check.err" >&2; fail "lmcode source $source does not check"; }
+done
+set +e; "$LMSCRIPT" --check tests/fixtures/lmcode/oob.lms >"$WORK/type-error.txt" 2>&1; code=$?; set -e
+[ "$code" = 2 ] || fail "wrong-type method call must be a compile error (exit $code)"
+mkdir -p build
+out="$("$HOST" --lmcode tests/fixtures/lmcode/smoke.dslb)"
 [ "$(tail -1 <<<"$out")" = '{"ok": true, "result": null}' ] || fail "smoke run: $out"
 grep -q '^example.com:8080/x?y=1$' <<<"$out" || fail "smoke url line: $out"
 grep -q '^GET /a HTTP/1.1 host=example.com$' <<<"$out" || fail "smoke request line: $out"
 grep -q '^200 OK server=squid$' <<<"$out" || fail "smoke response line: $out"
-ok "bytecode: parse_url/parse_request/parse_response through the DSL"
-
-cat > "$WORK/bad-usage.lms" <<EOF
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
-let names = proxy.parse_response("HTTP/1.1 200 OK\r\nA: 1\r\nB: 2\r\n\r\n").header_names();
-if (names.len() != 2 || names.at(0) != "A" || names.at(1) != "B") { println("bad"); }
-let u = proxy.parse_url("http://example.com/");
-if (!u.valid() || u.has_port() || u.port() != 80 || u.host_is_ip()) { println("bad"); }
-if (proxy.percent_decode("a%20b") != "a b") { println("bad"); }
-let fpath = "$WORK/std-file.txt";
-file_write(fpath, "alpha\n");
-file_append(fpath, "beta");
-if (!file_exists(fpath) || file_read(fpath) != "alpha\nbeta") { println("bad"); }
-let lines = file_lines(fpath);
-if (lines.len() != 2 || lines.at(0) != "alpha" || lines.at(1) != "beta") { println("bad"); }
-println("done");
-end _dsl_
-savedsl(p, "$WORK/bad-usage.dslb");
-EOF
-"$LMSCRIPT" "$WORK/bad-usage.lms" "$WORK/bad-usage.dslb" >/dev/null || fail "bad-usage compile"
-out="$("$HOST" --lmcode "$WORK/bad-usage.dslb")"
+ok "lmcode bytecode runs parse_url/parse_request/parse_response"
+out="$("$HOST" --lmcode tests/fixtures/lmcode/bad-usage.dslb)"
 grep -q '^done$' <<<"$out" || fail "StrList/percent/flags/file_* checks failed: $out"
-ok "StrList.at/len, Url flags, percent_decode, and std file_* behave"
-
-cat > "$WORK/oob.lms" <<EOF
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
-proxy.parse_url("http://h/").header_names();
-end _dsl_
-savedsl(p, "$WORK/oob.dslb");
-EOF
-set +e; "$LMSCRIPT" "$WORK/oob.lms" "$WORK/oob.dslb" >"$WORK/type-error.txt" 2>&1; code=$?; set -e
-[ "$code" = 2 ] || fail "wrong-type method call must be a compile error (exit $code)"
-cat > "$WORK/oob2.lms" <<EOF
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
-let m = proxy.parse_response("HTTP/1.1 200 OK\r\nA: 1\r\n\r\n");
-m.header_names().at(5);
-end _dsl_
-savedsl(p, "$WORK/oob2.dslb");
-EOF
-"$LMSCRIPT" "$WORK/oob2.lms" "$WORK/oob2.dslb" >/dev/null || fail "compile"
-set +e; out="$("$HOST" --lmcode "$WORK/oob2.dslb" 2>&1)"; code=$?; set -e
+ok "StrList.at/len, Url flags, percent_decode and std file_* behave"
+set +e; out="$("$HOST" --lmcode tests/fixtures/lmcode/oob2.dslb 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'out of range'* ]] || fail "StrList.at bounds (exit $code): $out"
 ok "type mismatch refused at compile (exit 2), StrList.at bounds refused at runtime (exit 3)"
-
 set +e; out="$("$HOST" 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmproxy'* ]] || fail "bad args refusal (exit $code): $out"
 ok "bad arguments refused (exit 2)"
 set +e; out="$("$HOST" --lmcode "$WORK/no-such.dslb" 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'"phase": "load"'* ]] || fail "missing bytecode refusal (exit $code): $out"
 ok "missing bytecode file refused at load (exit 3)"
-
-"$HOST" --lmcode "$WORK/smoke.dslb" "$WORK/bad-usage.dslb" >"$WORK/multi.jsonl" || fail "multi-bytecode run"
+"$HOST" --lmcode tests/fixtures/lmcode/smoke.dslb tests/fixtures/lmcode/bad-usage.dslb >"$WORK/multi.jsonl" || fail "multi-bytecode run"
 [ "$(grep -c '^{"ok": true, "result": null}$' "$WORK/multi.jsonl")" = 2 ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially"
 
-# --- examples compile and run ---
-mkdir -p build
+# --- examples run against their pinned compiler-library artifacts ---
 for f in parse-url inspect-request inspect-response percent-encoding; do
-  "$LMSCRIPT" "examples/$f.lms" "build/$f.dslb" >"$WORK/$f.compile.log" 2>&1 || fail "$f example compile"
-  "$HOST" --lmcode "build/$f.dslb" >"$WORK/$f.out" || fail "$f example run"
-  # every '# expect:' line must appear in the program output
+  "$HOST" --lmcode "tests/fixtures/lmcode/$f.dslb" >"$WORK/$f.out" || fail "$f example run"
   while IFS= read -r line; do
     grep -qxF "${line:2}" "$WORK/$f.out" || fail "$f example output missing: ${line:2} (got $(cat "$WORK/$f.out"))"
   done < <(grep '^#|' "examples/$f.lms")
 done
-ok "examples compile and their expected output matches"
+ok "pinned lmcode examples match their expected output"
 
 # --- forward proxy mode test ---
 python3 -c "

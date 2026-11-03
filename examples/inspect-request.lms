@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP request
 # Shows: proxy.parse_request, Message.method/target/version/header/header_names
-# Run: lmscript examples/inspect-request.lms      (then: lmproxy --lmcode build/inspect-request.dslb)
+# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-request.lms tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb
 # Needs: nothing (offline); the raw request is embedded below.
 # exit: 0
 # expect:
@@ -8,7 +8,7 @@
 #|host -> example.com
 #|accept -> */*
 #|3 header fields
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+program = _lmcode_ schema="../schema/lmproxy.host.json";
 
 let raw = "GET /index.html HTTP/1.1\r\n"
         + "Host: example.com\r\n"
@@ -26,5 +26,4 @@ if (!m.complete()) {
   println(str(m.header_count()) + " header fields");
 }
 
-end _dsl_
-savedsl(p, "build/inspect-request.dslb");
+end _lmcode_

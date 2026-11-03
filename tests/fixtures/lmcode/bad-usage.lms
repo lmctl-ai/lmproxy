@@ -1,0 +1,14 @@
+program = _lmcode_ schema="../../../schema/lmproxy.host.json";
+let names = proxy.parse_response("HTTP/1.1 200 OK\r\nA: 1\r\nB: 2\r\n\r\n").header_names();
+if (names.len() != 2 || names.at(0) != "A" || names.at(1) != "B") { println("bad"); }
+let u = proxy.parse_url("http://example.com/");
+if (!u.valid() || u.has_port() || u.port() != 80 || u.host_is_ip()) { println("bad"); }
+if (proxy.percent_decode("a%20b") != "a b") { println("bad"); }
+let fpath = "build/std-file.txt";
+file_write(fpath, "alpha\n");
+file_append(fpath, "beta");
+if (!file_exists(fpath) || file_read(fpath) != "alpha\nbeta") { println("bad"); }
+let lines = file_lines(fpath);
+if (lines.len() != 2 || lines.at(0) != "alpha" || lines.at(1) != "beta") { println("bad"); }
+println("done");
+end _lmcode_

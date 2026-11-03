@@ -1,0 +1,8 @@
+program = _lmcode_ schema="../../../schema/lmproxy.host.json";
+let u = proxy.parse_url("http://example.com:8080/x?y=1");
+println(u.host() + ":" + str(u.port()) + u.path());
+let m = proxy.parse_request("GET /a HTTP/1.1\r\nHost: example.com\r\n\r\n");
+println(m.method() + " " + m.target() + " " + m.version() + " host=" + m.header("host"));
+let r = proxy.parse_response("HTTP/1.1 200 OK\r\nServer: squid\r\n\r\n");
+println(str(r.status()) + " " + r.reason() + " server=" + r.header("SERVER"));
+end _lmcode_

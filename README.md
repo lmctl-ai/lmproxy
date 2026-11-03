@@ -10,7 +10,7 @@ Everything in this repository runs through [lmctl](https://lmctl.com), the core 
 
 ```bash
 npm install -g @lmctl-ai/lmctl
-lmctl autorun examples/inspect-request.lms
+lmproxy parse-request examples/request.txt
 lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-request.lms
 ```
 
@@ -19,12 +19,12 @@ lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/i
 | **URL parsing & decomposition** | **Request message inspection** | **Response status & redirect** |
 | --- | --- | --- |
 | <img src="docs/images/parse-url.png" width="290"> | <img src="docs/images/inspect-request.png" width="290"> | <img src="docs/images/inspect-response.png" width="290"> |
-| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/parse-url.lms` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-request.lms` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/inspect-response.lms` |
+| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb` |
 
 | **Percent-encoding** | **CLI parse-url JSON** | **lmproxy CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/percent-encoding.png" width="290"> | <img src="docs/images/cli-parse-url.png" width="290"> | <img src="docs/images/lmproxy-cli.png" width="290"> |
-| Percent-decode and re-encode URL path components.<br>`lmctl https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed DSL signatures.<br>`lmproxy --version && lmproxy --lmcode-signatures` |
+| Percent-decode and re-encode URL path components.<br>`lmproxy --lmcode tests/fixtures/lmcode/percent-encoding.dslb` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed lmcode signatures.<br>`lmproxy --version && lmproxy --lmcode-signatures` |
 
 ## Build
 
@@ -63,26 +63,33 @@ lmproxy --lmcode FILE [FILE ...]
 - `--ssl-bump`: Decrypt and inspect HTTPS traffic using an embedded, on-the-fly certificate generator helper.
 
 The `parse-*` commands are the simple entry points; the `--lmcode` interface
-runs lmscript bytecode against the same engine with structured access to
+runs lmcode bytecode against the same engine with structured access to
 parsed objects.
 
-## Scripting
+## lmcode examples
 
-```lmscript
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
-let u = proxy.parse_url("http://user@example.com:8080/a?b=1");
-println(u.host() + ":" + str(u.port()) + u.path());
-end _dsl_
-savedsl(p, "build/show.dslb");
+Examples are compile-only sources consumed by the native lmproxy host. Their tested bytecode is pinned under `tests/fixtures/lmcode/`; do not invoke them through the general lmctl runner because they bind lmproxy host functions. To regenerate an artifact with a compiler-library checkout:
+
+```sh
+LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/parse-url.lms tests/fixtures/lmcode/parse-url.dslb
+python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json
+lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb
 ```
 
-See `examples/` for runnable scripts.
+```lmscript
+program = _lmcode_ schema="../schema/lmproxy.host.json";
+let u = proxy.parse_url("http://user@example.com:8080/a?b=1");
+println(u.host() + ":" + str(u.port()) + u.path());
+end _lmcode_
+```
+
+See `examples/` for compile-only lmcode source and pinned host-run artifacts.
 
 ## Repository layout
 
-- `cpp/` — the CLI host: DSL VM integration plus the Squid wrapper
-- `schema/lmproxy.host.json` — the host-only DSL schema (copied to `schema/lmproxy.dsl.json` and embedded into the binary; `lmscript` >= 0.2.420 supplies the built-in standard library implicitly)
-- `examples/` — lmscript examples
+- `cpp/` — the CLI host: lmcode VM integration plus the Squid wrapper
+- `schema/lmproxy.host.json` — the host-only lmcode schema (copied to `schema/lmproxy.dsl.json` and embedded into the binary; `lmscript` >= 0.2.456 supplies the built-in standard library implicitly)
+- `examples/` — lmcode source examples
 - `scripts/` — vendoring (Squid source, `lmcode-cpp` SDK pinned in `sdk.lock`) and compiler selection
 - `third_party/` — downloaded upstream sources (git-ignored, pinned by `squid.lock`)
 

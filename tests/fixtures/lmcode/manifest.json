@@ -1,0 +1,60 @@
+{
+  "format": 1,
+  "compiler": {
+    "repo": "lmctlhq/lmctl-mono",
+    "branch": "main",
+    "commit": "bc5646d07cc59e6c940cc2312276ed0aa7bdcb6a",
+    "api": "compileDsl"
+  },
+  "programs": [
+    {
+      "name": "parse-url",
+      "source": "examples/parse-url.lms",
+      "source_sha256": "d3fd545ef16cddb105ca69c278974fa975b38751c613f98756afa8ff99ec0fcd",
+      "bytecode": "tests/fixtures/lmcode/parse-url.dslb",
+      "bytecode_sha256": "06ca1956342460334b7d07533fbf3fe531d7fdba52d6204735ca948c4c7264e3"
+    },
+    {
+      "name": "inspect-request",
+      "source": "examples/inspect-request.lms",
+      "source_sha256": "dbd03088e6ff328618b713e03e7e6e8c54bec26ad0d6e36093ad6e4f131b9b75",
+      "bytecode": "tests/fixtures/lmcode/inspect-request.dslb",
+      "bytecode_sha256": "0195eb1127c14656041350f1d093e10feef962926db967d4a8ea648848724a04"
+    },
+    {
+      "name": "inspect-response",
+      "source": "examples/inspect-response.lms",
+      "source_sha256": "c8142b2b66d06ba143c93eb87651ccd43f40c0a16f6ace586efaf687b95c0ee5",
+      "bytecode": "tests/fixtures/lmcode/inspect-response.dslb",
+      "bytecode_sha256": "885f816a65f12a2289501ec67a40a32e4d89521e0c7a6c5d8228123df4f2e6de"
+    },
+    {
+      "name": "percent-encoding",
+      "source": "examples/percent-encoding.lms",
+      "source_sha256": "888338481dae86f87fc7953592bc7b4eda94b5104d1afeac552df2b485c62164",
+      "bytecode": "tests/fixtures/lmcode/percent-encoding.dslb",
+      "bytecode_sha256": "711bc23515b07a5ef3cb265ec7e4d55588fcfcc77a4806a2df5c3296063cd5be"
+    },
+    {
+      "name": "smoke",
+      "source": "tests/fixtures/lmcode/smoke.lms",
+      "source_sha256": "5279545ef3fc2791231bd78cabb07ee9dc3553fb1e47c5c101c32fad6bae8ed7",
+      "bytecode": "tests/fixtures/lmcode/smoke.dslb",
+      "bytecode_sha256": "454f4717e42c5daa2071b9f85dc7885ee04d572fbec8af289a25febf0ad81c38"
+    },
+    {
+      "name": "bad-usage",
+      "source": "tests/fixtures/lmcode/bad-usage.lms",
+      "source_sha256": "92fc389a609c26211ab160ae0c56b2637184564157f26731ac6af00745e5a437",
+      "bytecode": "tests/fixtures/lmcode/bad-usage.dslb",
+      "bytecode_sha256": "5fcf811b92455876b974d9c6b45a0979ac92c7d5a1b982b5226b40bb582266fd"
+    },
+    {
+      "name": "oob2",
+      "source": "tests/fixtures/lmcode/oob2.lms",
+      "source_sha256": "cd75c34a6a632b9f6660ed1c5c6817201eff2e81ed9b6281012f1418436dc8ab",
+      "bytecode": "tests/fixtures/lmcode/oob2.dslb",
+      "bytecode_sha256": "44295a7f1eb3ecbfbeb70ac0484d2cbd0bbda5f9f7a889d387644e7f6c932216"
+    }
+  ]
+}

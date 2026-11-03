@@ -57,16 +57,17 @@ jobs:
         run: |
           scripts/sync-squid.sh
           scripts/sync-sdk.sh --verify
+          scripts/sync-squid.sh --verify
 
       - name: toolchain (linux)
         if: runner.os == 'Linux' && env.ONLY_OK == 'true'
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq ninja-build libssl-dev
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq autoconf automake libtool pkg-config ninja-build libssl-dev
 
       - name: toolchain (macos)
         if: runner.os == 'macOS' && env.ONLY_OK == 'true'
         run: brew install ninja coreutils openssl@3
 
-      - name: lmscript compiler (npm @lmctl-ai/lmctl, DSL v5)
+      - name: lmcode compiler from the latest private npm prefix
         if: env.ONLY_OK == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -76,9 +77,11 @@ jobs:
         if: env.ONLY_OK == 'true'
         shell: bash
         run: |
-          npm i -g @lmctl-ai/lmctl@0.2.420
-          scripts/select-compiler.sh | tee compiler.txt
-          grep -q lmscript compiler.txt || { echo "no v5 compiler available"; exit 1; }
+          npm install --prefix "$RUNNER_TEMP/lmctl" --no-save --package-lock=false @lmctl-ai/lmctl@latest
+          echo "$RUNNER_TEMP/lmctl/node_modules/.bin" >> "$GITHUB_PATH"
+          export PATH="$RUNNER_TEMP/lmctl/node_modules/.bin:$PATH"
+          LMSCRIPT_BIN="$RUNNER_TEMP/lmctl/node_modules/.bin/lmscript" scripts/select-compiler.sh | tee compiler.txt
+          grep -q lmscript compiler.txt || { echo "no current lmcode compiler available"; exit 1; }
 
       - name: build and test
         if: env.ONLY_OK == 'true'

@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP response
 # Shows: proxy.parse_response, Message.status/reason, header defaults, Url flags
-# Run: lmscript examples/inspect-response.lms      (then: lmproxy --lmcode build/inspect-response.dslb)
+# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-response.lms tests/fixtures/lmcode/inspect-response.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb
 # Needs: nothing (offline).
 # exit: 0
 # expect:
@@ -9,7 +9,7 @@
 #|4 header fields
 #|default port of https url: 443
 #|explicit port present: false
-p = _dsl_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+program = _lmcode_ schema="../schema/lmproxy.host.json";
 
 let raw = "HTTP/1.1 301 Moved Permanently\r\n"
         + "Location: https://example.com/new\r\n"
@@ -26,5 +26,4 @@ let dest = proxy.parse_url(r.header("Location"));
 println("default port of " + dest.scheme() + " url: " + str(dest.port()));
 println("explicit port present: " + str(dest.has_port()));
 
-end _dsl_
-savedsl(p, "build/inspect-response.dslb");
+end _lmcode_
