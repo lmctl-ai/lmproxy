@@ -21,7 +21,12 @@ ok "SDK header matches sdk.lock"
 scripts/sync-squid.sh --verify >/dev/null || fail "squid pin mismatch"
 ok "third_party/squid matches squid.lock"
 
-cmake -S . -B "$BUILD_DIR" -G Ninja -DCMAKE_BUILD_TYPE=Release >"$WORK/cmake.log" 2>&1 ||
+CMAKE_ARGS=(-DCMAKE_BUILD_TYPE=Release)
+if [ "$UNAME_S" = "Darwin" ]; then
+  OPENSSL_ROOT_DIR="${OPENSSL_ROOT_DIR:-$(brew --prefix openssl@3.0)}"
+  CMAKE_ARGS+=(-DOPENSSL_ROOT_DIR="$OPENSSL_ROOT_DIR")
+fi
+cmake -S . -B "$BUILD_DIR" -G Ninja "${CMAKE_ARGS[@]}" >"$WORK/cmake.log" 2>&1 ||
   { tail -30 "$WORK/cmake.log" >&2; fail "cmake configure ($BUILD_DIR)"; }
 cmake --build "$BUILD_DIR" -j2 >"$WORK/build.log" 2>&1 ||
   { grep -n -B 3 -A 4 "error:" "$WORK/build.log" >&2 || true; tail -30 "$WORK/build.log" >&2; fail "cmake build ($BUILD_DIR)"; }
