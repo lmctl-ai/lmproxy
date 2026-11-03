@@ -27,7 +27,7 @@ if [ ! -f "$BUILD_DIR/Makefile" ]; then
   if [ -n "${OPENSSL_ROOT_DIR:-}" ]; then
     OPENSSL_ARG="--with-openssl=$OPENSSL_ROOT_DIR"
   elif [ "$(uname -s)" = "Darwin" ]; then
-    BREW_OPENSSL="$(brew --prefix openssl@3 2>/dev/null || echo "")"
+    BREW_OPENSSL="$(brew --prefix openssl@3.0 2>/dev/null || echo "")"
     if [ -n "$BREW_OPENSSL" ]; then
       OPENSSL_ARG="--with-openssl=$BREW_OPENSSL"
     fi
@@ -87,7 +87,7 @@ SSL_INC=""
 if [ -n "${OPENSSL_ROOT_DIR:-}" ] && [ -d "${OPENSSL_ROOT_DIR}/include" ]; then
   SSL_INC="-I${OPENSSL_ROOT_DIR}/include"
 elif [ "$(uname -s)" = "Darwin" ]; then
-  BREW_OPENSSL="$(brew --prefix openssl@3 2>/dev/null || echo "")"
+  BREW_OPENSSL="$(brew --prefix openssl@3.0 2>/dev/null || echo "")"
   if [ -n "$BREW_OPENSSL" ] && [ -d "$BREW_OPENSSL/include" ]; then
     SSL_INC="-I$BREW_OPENSSL/include"
   fi

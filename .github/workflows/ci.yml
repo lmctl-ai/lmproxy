@@ -65,7 +65,7 @@ jobs:
 
       - name: toolchain (macos)
         if: runner.os == 'macOS' && env.ONLY_OK == 'true'
-        run: brew install ninja coreutils openssl@3
+        run: brew install ninja coreutils openssl@3.0
 
       - name: lmcode compiler from the latest private npm prefix
         if: env.ONLY_OK == 'true'
