@@ -32,6 +32,39 @@ cmake -S . -B "$BUILD_DIR" -G Ninja "${CMAKE_ARGS[@]}" >"$WORK/cmake.log" 2>&1 |
 cmake --build "$BUILD_DIR" -j2 >"$WORK/build.log" 2>&1 ||
   { grep -n -B 3 -A 4 "error:" "$WORK/build.log" >&2 || true; tail -30 "$WORK/build.log" >&2; fail "cmake build ($BUILD_DIR)"; }
 ok "host build ($BUILD_DIR)"
+
+# A shim named lmproxy, first on PATH: run_lmcode binds to it. For each --lmcode call it records the
+# host's own exit code and keeps a copy of every private program file, for the bytecode checks and
+# the checks that call the host directly.
+SHIM="$HERE/$BUILD_DIR/test-shim"; rm -rf "$SHIM"; mkdir -p "$SHIM/runs"
+cat >"$SHIM/lmproxy" <<EOF2
+#!/bin/sh
+[ "\${1:-}" = --lmcode ] || exec "$HERE/$HOST" "\$@"
+tag="\$(mktemp -d "$SHIM/runs/run.XXXXXX")"
+i=0
+for a in "\$@"; do case "\$a" in --*) ;; *) cp "\$a" "\$tag/p\$i"; i=\$((i+1));; esac; done
+"$HERE/$HOST" "\$@"; c=\$?
+echo "\$c" > "\$tag/code"; echo "\$tag" > "$SHIM/last"; exit "\$c"
+EOF2
+chmod +x "$SHIM/lmproxy"
+PATH="$SHIM:$PATH"; export PATH
+# run_lms FILE: run a file; host output and the printed envelope go to stdout. Returns the host's exit
+# code from its last --lmcode call; 125 when no host ran.
+run_lms() {
+  rm -f "$SHIM/last"
+  "$LMSCRIPT" "$1" || true
+  [ -f "$SHIM/last" ] || return 125
+  return "$(cat "$(cat "$SHIM/last")/code")"
+}
+last_prog() { echo "$(cat "$SHIM/last")/p0"; }
+check_v6() { # program file: bytecode v6 for the raw host schema bytes
+  python3 - "$1" schema/lmproxy.dsl.json <<'PYV6'
+import hashlib,pathlib,sys
+b=pathlib.Path(sys.argv[1]).read_bytes()
+assert b[:6] == b'DSLB\x00\x06', 'not bytecode v6'
+assert b[6:38] == hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).digest(), 'schema hash differs from the raw host schema bytes'
+PYV6
+}
 python3 tests/check-host-flags.py schema/lmproxy.dsl.json "$HOST" || fail "hard host flag cutover"
 
 want_version="lmproxy $(cat VERSION)"
@@ -131,44 +164,68 @@ out="$("$HOST" parse-url 'http://h/x%20y')" # warm path only
 "$HOST" --lmcode-signatures >/dev/null
 ok "signatures stable after subcommand runs"
 
-# --- lmcode sources and pinned bytecode fixtures ---
-python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json || fail "lmcode fixture pins differ"
-for source in examples/*.lms tests/fixtures/lmcode/smoke.lms tests/fixtures/lmcode/bad-usage.lms tests/fixtures/lmcode/oob2.lms; do
+# --- lmcode sources ---
+for source in tests/fixtures/lmcode/smoke.lms tests/fixtures/lmcode/bad-usage.lms tests/fixtures/lmcode/oob2.lms; do
   "$LMSCRIPT" --check "$source" >"$WORK/check.out" 2>"$WORK/check.err" || { cat "$WORK/check.err" >&2; fail "lmcode source $source does not check"; }
 done
 set +e; "$LMSCRIPT" --check tests/fixtures/lmcode/oob.lms >"$WORK/type-error.txt" 2>&1; code=$?; set -e
 [ "$code" = 2 ] || fail "wrong-type method call must be a compile error (exit $code)"
 mkdir -p build
-out="$("$HOST" --lmcode tests/fixtures/lmcode/smoke.dslb)"
-[ "$(tail -1 <<<"$out")" = '{"ok": true, "result": null}' ] || fail "smoke run: $out"
+out="$(run_lms tests/fixtures/lmcode/smoke.lms)" || fail "smoke run: $out"
+[ "$(tail -1 <<<"$out")" = '{"ok":true,"result":null}' ] || fail "smoke run: $out"
 grep -q '^example.com:8080/x?y=1$' <<<"$out" || fail "smoke url line: $out"
 grep -q '^GET /a HTTP/1.1 host=example.com$' <<<"$out" || fail "smoke request line: $out"
 grep -q '^200 OK server=squid$' <<<"$out" || fail "smoke response line: $out"
+check_v6 "$(last_prog)" || fail "smoke is not bytecode v6 for the host schema"
+cp "$(last_prog)" "$WORK/smoke.prog"
 ok "lmcode bytecode runs parse_url/parse_request/parse_response"
-out="$("$HOST" --lmcode tests/fixtures/lmcode/bad-usage.dslb)"
+out="$(run_lms tests/fixtures/lmcode/bad-usage.lms)" || fail "bad-usage run: $out"
 grep -q '^done$' <<<"$out" || fail "StrList/percent/flags/file_* checks failed: $out"
+cp "$(last_prog)" "$WORK/bad-usage.prog"
 ok "StrList.at/len, Url flags, percent_decode and std file_* behave"
-set +e; out="$("$HOST" --lmcode tests/fixtures/lmcode/oob2.dslb 2>&1)"; code=$?; set -e
+set +e; out="$(run_lms tests/fixtures/lmcode/oob2.lms 2>&1)"; code=$?; set -e
 [ "$code" = 3 ] && [[ "$out" == *'out of range'* ]] || fail "StrList.at bounds (exit $code): $out"
 ok "type mismatch refused at compile (exit 2), StrList.at bounds refused at runtime (exit 3)"
 set +e; out="$("$HOST" 2>&1)"; code=$?; set -e
 [ "$code" = 2 ] && [[ "$out" == *'usage: lmproxy'* ]] || fail "bad args refusal (exit $code): $out"
 ok "bad arguments refused (exit 2)"
-set +e; out="$("$HOST" --lmcode "$WORK/no-such.dslb" 2>&1)"; code=$?; set -e
-[ "$code" = 3 ] && [[ "$out" == *'"phase": "load"'* ]] || fail "missing bytecode refusal (exit $code): $out"
+set +e; out="$("$HOST" --lmcode "$WORK/no-such.bin" 2>&1)"; code=$?; set -e
+[ "$code" = 3 ] && [[ "$out" == *'"phase":"load"'* ]] || fail "missing bytecode refusal (exit $code): $out"
 ok "missing bytecode file refused at load (exit 3)"
-"$HOST" --lmcode tests/fixtures/lmcode/smoke.dslb tests/fixtures/lmcode/bad-usage.dslb >"$WORK/multi.jsonl" || fail "multi-bytecode run"
-[ "$(grep -c '^{"ok": true, "result": null}$' "$WORK/multi.jsonl")" = 2 ] || fail "multiple bytecode files did not run in order"
+"$HOST" --lmcode "$WORK/smoke.prog" "$WORK/bad-usage.prog" >"$WORK/multi.out" || fail "multi-bytecode run"
+grep -qFx '{"ok":true,"result":[null,null],"parts":2}' "$WORK/multi.out" || fail "multiple bytecode files did not give one envelope"
+[ "$(grep -c '^LMCODE_RETURN_BEGIN$' "$WORK/multi.out")" = 1 ] || fail "multiple bytecode files must print one frame"
+[ "$(grep -n '^200 OK server=squid$' "$WORK/multi.out" | cut -d: -f1)" -lt "$(grep -n '^done$' "$WORK/multi.out" | cut -d: -f1)" ] || fail "multiple bytecode files did not run in order"
 ok "multiple bytecode files run sequentially"
 
-# --- examples run against their pinned compiler-library artifacts ---
+# --- invocation envelope ---
+printf 'not bytecode' >"$WORK/junk.bin"
+set +e; out="$("$HOST" --lmcode "$WORK/smoke.prog" "$WORK/junk.bin" 2>/dev/null)"; code=$?; set -e
+[ "$code" = 3 ] || fail "bad later file exit $code, expected 3"
+[[ "$out" == *'"phase":"load"'*'"part":1'* ]] || fail "load failure names its part: $out"
+[[ "$out" != *'example.com'* ]] || fail "a bad later file must stop everything before any run: $out"
+out="$("$LMSCRIPT" --dry-run tests/fixtures/lmcode/smoke.lms 2>&1)"
+[[ "$out" == *'PLAN complete'* ]] || fail "dry run refused the frame: $out"
+[[ "$out" != *'server=squid'* ]] || fail "a dry invocation must not run the program: $out"
+for args in "--lmcode" "--lmcode --bogus" "--dry-run --lmcode x" "--dsl x"; do
+  set +e; # shellcheck disable=SC2086
+  out="$("$HOST" $args 2>/dev/null)"; code=$?; set -e
+  [ "$code" = 2 ] && [[ "$out" == *'"phase":"cli"'* ]] || fail "'$args' (exit $code): $out"
+done
+ok "load before run, dry invocation runs nothing, cli errors exit 2 with a frame"
+
+# --- examples run themselves ---
 for f in parse-url inspect-request inspect-response percent-encoding; do
-  "$HOST" --lmcode "tests/fixtures/lmcode/$f.dslb" >"$WORK/$f.out" || fail "$f example run"
+  rm -f "$SHIM/last"
+  "$LMSCRIPT" "examples/$f.lms" >"$WORK/$f.out" 2>"$WORK/$f.err" || { cat "$WORK/$f.err" >&2; fail "$f example run"; }
+  [ -f "$SHIM/last" ] || fail "$f did not reach the host"
+  check_v6 "$(last_prog)" || fail "$f is not bytecode v6 for the host schema"
+  "$LMSCRIPT" --check "examples/$f.lms" >"$WORK/check.out" 2>"$WORK/check.err" || { cat "$WORK/check.err" >&2; fail "lmcode source $f does not check"; }
   while IFS= read -r line; do
     grep -qxF "${line:2}" "$WORK/$f.out" || fail "$f example output missing: ${line:2} (got $(cat "$WORK/$f.out"))"
   done < <(grep '^#|' "examples/$f.lms")
 done
-ok "pinned lmcode examples match their expected output"
+ok "lmcode examples match their expected output"
 
 # --- forward proxy mode test ---
 python3 -c "

@@ -1,7 +1,7 @@
 # Chapter: Basics - parse a URL
 # Shows: proxy.parse_url, Url.scheme/host/port/path/userinfo/has_port, string concat
-# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/parse-url.lms tests/fixtures/lmcode/parse-url.dslb && lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb
-# Needs: nothing (offline). Run the bytecode with: lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb
+# Run: lmscript examples/parse-url.lms
+# Needs: nothing (offline).
 # exit: 0
 # expect:
 #|http://user@example.com:8080/docs/index.html?lang=en
@@ -16,7 +16,7 @@
 #|  port   : 5432
 #|  path   : /
 #|  user   :
-program = _lmcode_ schema="../schema/lmproxy.host.json";
+program = _lmcode_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
 
 let urls = str_list()
   .add("http://user@example.com:8080/docs/index.html?lang=en")
@@ -34,3 +34,5 @@ for (i in range(0, urls.len())) {
 }
 
 end _lmcode_
+r = run_lmcode(program);
+require(r.ok, json_stringify(r));

@@ -12,3 +12,5 @@ let lines = file_lines(fpath);
 if (lines.len() != 2 || lines.at(0) != "alpha" || lines.at(1) != "beta") { println("bad"); }
 println("done");
 end _lmcode_
+r = run_lmcode(program, {command: ["lmproxy", "--lmcode", "$DSLFILE"]});
+println(json_stringify(r));

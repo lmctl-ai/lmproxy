@@ -1,6 +1,6 @@
 # Chapter: Basics - inspect an HTTP request
 # Shows: proxy.parse_request, Message.method/target/version/header/header_names
-# Run: LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/inspect-request.lms tests/fixtures/lmcode/inspect-request.dslb && lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb
+# Run: lmscript examples/inspect-request.lms
 # Needs: nothing (offline); the raw request is embedded below.
 # exit: 0
 # expect:
@@ -8,7 +8,7 @@
 #|host -> example.com
 #|accept -> */*
 #|3 header fields
-program = _lmcode_ schema="../schema/lmproxy.host.json";
+program = _lmcode_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
 
 let raw = "GET /index.html HTTP/1.1\r\n"
         + "Host: example.com\r\n"
@@ -27,3 +27,5 @@ if (!m.complete()) {
 }
 
 end _lmcode_
+r = run_lmcode(program);
+require(r.ok, json_stringify(r));

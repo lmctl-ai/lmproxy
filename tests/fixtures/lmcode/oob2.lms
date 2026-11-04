@@ -2,3 +2,5 @@ program = _lmcode_ schema="../../../schema/lmproxy.host.json";
 let m = proxy.parse_response("HTTP/1.1 200 OK\r\nA: 1\r\n\r\n");
 m.header_names().at(5);
 end _lmcode_
+r = run_lmcode(program, {command: ["lmproxy", "--lmcode", "$DSLFILE"]});
+println(json_stringify(r));

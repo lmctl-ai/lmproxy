@@ -19,12 +19,12 @@ lmctl autorun https://raw.githubusercontent.com/lmctl-ai/lmproxy/main/examples/i
 | **URL parsing & decomposition** | **Request message inspection** | **Response status & redirect** |
 | --- | --- | --- |
 | <img src="docs/images/parse-url.png" width="290"> | <img src="docs/images/inspect-request.png" width="290"> | <img src="docs/images/inspect-response.png" width="290"> |
-| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmproxy --lmcode tests/fixtures/lmcode/inspect-request.dslb` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmproxy --lmcode tests/fixtures/lmcode/inspect-response.dslb` |
+| Extract scheme, host, port, path, and userinfo using Squid 7 URL parser.<br>`lmscript examples/parse-url.lms` | Parse HTTP/1.1 request lines and inspect header fields.<br>`lmscript examples/inspect-request.lms` | Parse HTTP/1.1 response status code, headers, and chase Location redirects.<br>`lmscript examples/inspect-response.lms` |
 
 | **Percent-encoding** | **CLI parse-url JSON** | **lmproxy CLI & Schema** |
 | --- | --- | --- |
 | <img src="docs/images/percent-encoding.png" width="290"> | <img src="docs/images/cli-parse-url.png" width="290"> | <img src="docs/images/lmproxy-cli.png" width="290"> |
-| Percent-decode and re-encode URL path components.<br>`lmproxy --lmcode tests/fixtures/lmcode/percent-encoding.dslb` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed lmcode signatures.<br>`lmproxy --version && lmproxy --lmcode-signatures` |
+| Percent-decode and re-encode URL path components.<br>`lmscript examples/percent-encoding.lms` | CLI URL parsing emitting structured JSON for shell automation.<br>`lmproxy parse-url <URL>` | Embedded Squid 7 engine and strongly typed lmcode signatures.<br>`lmproxy --version && lmproxy --lmcode-signatures` |
 
 ## Build
 
@@ -63,27 +63,27 @@ lmproxy --lmcode FILE [FILE ...]
 - `--ssl-bump`: Decrypt and inspect HTTPS traffic using an embedded, on-the-fly certificate generator helper.
 
 The `parse-*` commands are the simple entry points; the `--lmcode` interface
-runs lmcode bytecode against the same engine with structured access to
+runs lmcode programs against the same engine with structured access to
 parsed objects.
 
 ## lmcode examples
 
-Examples are compile-only sources consumed by the native lmproxy host. Their tested bytecode is pinned under `tests/fixtures/lmcode/`; do not invoke them through the general lmctl runner because they bind lmproxy host functions. To regenerate an artifact with a compiler-library checkout:
+Examples run themselves: each one compiles its block and runs it with `run_lmcode`. Results come back as one envelope (`r.ok`, `r.result`, `r.phase`, `r.code`, `r.message`), so a failure is data the script checks.
 
 ```sh
-LMCODE_COMPILER_MODULE=/path/to/lmctl-mono/lmscript/dist/dsl.js node scripts/compile-lmcode-fixture.mjs examples/parse-url.lms tests/fixtures/lmcode/parse-url.dslb
-python3 scripts/verify-lmcode-fixtures.py tests/fixtures/lmcode/manifest.json
-lmproxy --lmcode tests/fixtures/lmcode/parse-url.dslb
+PATH=$PWD/build:$PATH lmscript examples/parse-url.lms
 ```
 
 ```lmscript
-program = _lmcode_ schema="../schema/lmproxy.host.json";
+program = _lmcode_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
 let u = proxy.parse_url("http://user@example.com:8080/a?b=1");
 println(u.host() + ":" + str(u.port()) + u.path());
 end _lmcode_
+r = run_lmcode(program);
+require(r.ok, json_stringify(r));
 ```
 
-See `examples/` for compile-only lmcode source and pinned host-run artifacts.
+See `examples/` for more.
 
 ## Repository layout
 

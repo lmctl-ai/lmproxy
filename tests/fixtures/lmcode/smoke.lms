@@ -6,3 +6,5 @@ println(m.method() + " " + m.target() + " " + m.version() + " host=" + m.header(
 let r = proxy.parse_response("HTTP/1.1 200 OK\r\nServer: squid\r\n\r\n");
 println(str(r.status()) + " " + r.reason() + " server=" + r.header("SERVER"));
 end _lmcode_
+r = run_lmcode(program, {command: ["lmproxy", "--lmcode", "$DSLFILE"]});
+println(json_stringify(r));
