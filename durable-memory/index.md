@@ -10,6 +10,8 @@ Repository: https://github.com/lmctl-ai/lmproxy.
 | --- | --- |
 | [01-sdk-catalog.md](01-sdk-catalog.md) | Shared SDK catalogs, collection handles, and standard declarations |
 | [02-squid-engine-architecture.md](02-squid-engine-architecture.md) | Squid 7 full engine architecture, convenience static libraries, ephemeral runtime, and subcommands |
+| [03-invocation-envelope.md](03-invocation-envelope.md) | `run_lmcode`, the one-frame envelope, exit codes, dry mode, and how tests capture programs |
+| [04-std-rest-and-cli-interfaces.md](04-std-rest-and-cli-interfaces.md) | `lmcode_std_v3` 226-signature standard catalog, `RestGet` / `CliCommand` / `CliOption`, and `rest_cli` |
 
 ## Architecture & Build
 - Host C++ entry points in `cpp/` embed `dslvm::Registry` (pinned via `sdk.lock` to `lmcode-cpp` `93bddf1`), Squid 7 proxy engine, and static OpenSSL.

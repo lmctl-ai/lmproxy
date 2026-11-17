@@ -85,6 +85,37 @@ require(r.ok, json_stringify(r));
 
 See `examples/` for more.
 
+### Standard `lmcode` REST Endpoints and Stateless CLI
+
+`lmproxy` embeds the 226-signature `lmcode_std_v3` standard catalog, so scripts can declare REST endpoints (`RestGet`, `RestPost`, `RestPut`, `RestDelete`, `RestPatch`, `RestHead`, `RestOptions`, `RestHandler`) and stateless CLI commands/options (`CliCommand`, `CliOption`) with `@"..."` annotations and dispatch them via `rest_serve()` or `rest_cli(args)`:
+
+```lmscript
+program = _lmcode_ cli="lmproxy" install="github:lmctl-ai/lmproxy@latest";
+  @"--field"
+  fn opt_field(x: RestExchange) -> void implements CliOption {
+    x.set("field", x.query("field"));
+  }
+
+  @"parse"
+  fn cmd_parse(x: RestExchange) -> void implements CliCommand {
+    let u = proxy.parse_url(x.body());
+    x.send(x.get("field") + "=" + u.host() + ":" + str(u.port()) + u.path());
+  }
+
+  @"/request/inspect"
+  fn get_inspect(x: RestExchange) -> void implements RestGet {
+    let m = proxy.parse_request("GET /status HTTP/1.1\r\nHost: proxy.local\r\n\r\n");
+    x.json("{\"method\":\"" + m.method() + "\",\"host\":\"" + m.header("host") + "\"}");
+  }
+
+  rest_config("session", "global");
+  $return.cli_out = rest_cli(str_split("--field=url parse -- http://example.com:8080/a?b=1", " "));
+  $return.get_out = rest_cli(str_split("/request/inspect", " "));
+end _lmcode_
+r = run_lmcode(program);
+require(r.ok, json_stringify(r));
+```
+
 ## Repository layout
 
 - `cpp/` — the CLI host: lmcode VM integration plus the Squid wrapper

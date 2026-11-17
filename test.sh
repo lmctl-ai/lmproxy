@@ -104,7 +104,7 @@ import sys
 work=Path(sys.argv[1])
 registry=set((work/'registry-signatures.txt').read_text().splitlines())
 standard=set((work/'standard-signatures.txt').read_text().splitlines())
-assert len(standard)==206, len(standard)
+assert len(standard)==226, len(standard)
 (work/'host-signatures.txt').write_bytes(''.join(line+'\n' for line in sorted(registry-standard)).encode('utf-8'))
 PYHOST
 diff -u <("$LMSCRIPT" --lmcode-signatures schema/lmproxy.dsl.json --without-std) "$WORK/host-signatures.txt" || fail "host-only registry/compiler signatures differ"
@@ -440,5 +440,37 @@ case "$UNAME_S" in
     ok "Windows host ($HOST)"
     ;;
 esac
+
+# --- lmcode std REST endpoints and stateless CLI (RestGet, CliCommand, CliOption, rest_cli) ---
+cat > "$WORK/std-rest-cli.lms" <<EOF_REST
+program = _lmcode_ schema="$HERE/schema/lmproxy.host.json";
+@"--field"
+fn opt_field(x: RestExchange) -> void implements CliOption {
+  x.set("field", x.query("field"));
+}
+
+@"parse"
+fn cmd_parse(x: RestExchange) -> void implements CliCommand {
+  let u = proxy.parse_url(x.body());
+  x.send(x.get("field") + "=" + u.host() + ":" + str(u.port()) + u.path());
+}
+
+@"/request/inspect"
+fn get_inspect(x: RestExchange) -> void implements RestGet {
+  let m = proxy.parse_request("GET /status HTTP/1.1\r\nHost: proxy.local\r\n\r\n");
+  x.json("{\"method\":\"" + m.method() + "\",\"host\":\"" + m.header("host") + "\"}");
+}
+
+rest_config("session", "global");
+\$return.cli_out = rest_cli(str_split("--field=url parse -- http://example.com:8080/a?b=1", " "));
+\$return.get_out = rest_cli(str_split("/request/inspect", " "));
+end _lmcode_
+r = run_lmcode(program, {command: ["lmproxy", "--lmcode", "\$DSLFILE"]});
+println(json_stringify(r));
+EOF_REST
+out="$(run_lms "$WORK/std-rest-cli.lms")" || fail "std-rest-cli run: $out"
+echo "$out" | grep -qF '"cli_out":"url=example.com:8080/a?b=1"' || fail "std-rest-cli cli_out: $out"
+echo "$out" | grep -qF '"get_out":"{\"method\":\"GET\",\"host\":\"proxy.local\"}"' || fail "std-rest-cli get_out: $out"
+ok "lmcode std REST endpoints and stateless CLI (RestGet, CliCommand, CliOption, rest_cli)"
 
 echo "PASS: $pass checks"
