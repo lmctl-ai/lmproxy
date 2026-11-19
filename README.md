@@ -2,6 +2,8 @@
 
 Squid's HTTP and URL machinery as a single statically-linked, scriptable CLI and proxy daemon.
 
+**Documentation:** [Quick reference](https://www.lmctl.com/tools/lmproxy/) · [LLM skill](https://www.lmctl.com/tools/lmproxy/skill.html) · [Guide](https://www.lmctl.com/tools/lmproxy/guide.html) · [Reference](https://www.lmctl.com/tools/lmproxy/reference.html)
+
 lmproxy embeds the complete [Squid](https://www.squid-cache.org) 7 engine (forward proxy daemon, transparent interception, SSL-bump TLS interception, and URL & HTTP/1.1 message parsers) in one dependency-free executable that can be driven from the command line or scripted with [lmscript](https://github.com/lmctl-ai). It provides full proxy server capabilities alongside standalone parsing tools for inspecting how Squid interprets traffic without requiring external config files.
 
 ## Install lmctl
